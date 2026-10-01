@@ -173,7 +173,24 @@ public final class Tracker {
 
    public static void say(String msg) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) mc.player.displayClientMessage(Component.literal(msg), false);
+        Component c = Component.literal(msg);
+        if (mc.player == null) return;
+        // Minecraft keeps renaming its chat methods, so find one at runtime.
+        if (call(mc.player, "sendSystemMessage", c)) return;
+        if (call(mc.player, "displayClientMessage", c, false)) return;
+        try {
+            Object listener = mc.getClass().getMethod("getChatListener").invoke(mc);
+            if (call(listener, "handleSystemMessage", c, false)) return;
+        } catch (Exception ignored) {}
+        FarmProfitClient.LOG.info(msg);
+    }
+
+    private static boolean call(Object target, String name, Object... args) {
+        for (java.lang.reflect.Method m : target.getClass().getMethods()) {
+            if (!m.getName().equals(name) || m.getParameterCount() != args.length) continue;
+            try { m.invoke(target, args); return true; } catch (Exception ignored) {}
+        }
+        return false;
     }
 
     private Tracker() {}

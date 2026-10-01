@@ -51,6 +51,30 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 4.0
+- **Setup check** the first time you join SkyBlock (reopen with `/profit setup`): ✔/✖ for location, Stats and Powders
+  widgets, sidebar, prices and the Hypixel Mod API, with a button that opens Hypixel's `/widget` menu.
+- **Settings menu**: search box, ↺ reset next to every setting, "Reset tab", a **Hidden items** tab to count items again,
+  and a Configure button in **Mod Menu** if you have it.
+- **HUD editor** (`/profit gui`, or the button in Settings → HUD): every panel gets an outline; drag to move,
+  middle-click to change size, right-click the title to hide or show it. `/profit gui reset` resets the layout.
+  HUD settings → *Separate small panels* splits off the secret finder, Jacob's contest and "Best now";
+  *Position per activity* gives the main HUD its own spot per activity. Clicking the main title toggles the all-time line.
+- **Duplicates**: if SkyHanni, Skyblocker, Odin or Secret Routes already do something (price tooltips, chest profit,
+  secret finder, contest reminder), you get a one-click `[Turn these off here]`.
+- `/profit report` copies a diagnostics report to paste to Claude; `/profit note <text>` adds a note to the current session
+  (shown in history and the CSV).
+- **Profiles**: `/profit profile save <name>`, `load <name>`, `list`, `export` (copies a code), `import <code>`.
+- **New-build check**: tells you when your GitHub repo has a newer successful build (Settings → General → GitHub repo).
+
+## New in 3.1
+- Combat sessions only start after real fighting: 5 mob hits within 30 s (players, NPCs and armor stands never count),
+  or a slayer quest. Both are adjustable in Combat & Slayers settings.
+- The HUD follows what you do: it switches as soon as you do something else (farm, chop, fish...) and when you arrive
+  on a new island. Unknown log blocks on foraging islands are counted too, so Galatea woods always start a session.
+- About 50 new settings: HUD look (opacity, line height, shadow, which lines show, number format),
+  and per-activity options in every tab (Farming, Mining, Foraging, Fishing, Combat, Dungeons, Kuudra, Diana, Bazaar).
+
 ## New in 3.0
 **Accuracy**
 - Bazaar sale values now include Bazaar tax (the `Bazaar tax %` setting), so profit isn't overstated.

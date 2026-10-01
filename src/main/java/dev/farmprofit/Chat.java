@@ -28,6 +28,31 @@ final class Chat {
         }
     }
 
+    /** Copies text to the clipboard. Returns false if that isn't possible. */
+    static boolean copy(String text) {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            Object kb = mc.getClass().getField("keyboardHandler").get(mc);
+            kb.getClass().getMethod("setClipboard", String.class).invoke(kb, text);
+            return true;
+        } catch (Throwable t) { return false; }
+    }
+
+    /** A chat line that opens a web page when clicked. Falls back to showing the address. */
+    static Component link(String text, String url) {
+        MutableComponent c = Component.literal(text);
+        try {
+            Class<?> cls = Class.forName("net.minecraft.network.chat.ClickEvent$OpenUrl");
+            Object click;
+            try { click = cls.getConstructor(java.net.URI.class).newInstance(java.net.URI.create(url)); }
+            catch (NoSuchMethodException e) { click = cls.getConstructor(String.class).newInstance(url); }
+            final Object ev = click;
+            return c.withStyle(style -> Reflect.call(style, "withClickEvent", ev) instanceof Style s ? s : style);
+        } catch (Throwable t) {
+            return Component.literal(text + " §7" + url);
+        }
+    }
+
     /** Plays a short "ding" (note block pling). Silently does nothing if unavailable. */
     static void ping() {
         try {

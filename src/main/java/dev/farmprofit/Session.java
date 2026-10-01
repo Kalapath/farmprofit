@@ -35,6 +35,8 @@ public final class Session {
     public double costs;
     /** Where you were fishing */
     public String location;
+    /** Your own note, e.g. "new hoe + Finnegan" (/profit note). */
+    public String note;
     /** Coins found directly (fishing treasure etc.) */
     public double coins;
     /** Time actually spent active; -1 for sessions saved by older versions. */

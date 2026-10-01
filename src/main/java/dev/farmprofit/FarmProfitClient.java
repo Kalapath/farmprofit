@@ -65,7 +65,10 @@ public final class FarmProfitClient implements ClientModInitializer {
 
         // Hitting mobs: combat / sea creatures / pests / keeps mining & foraging alive
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
-            if (player == Minecraft.getInstance().player) Tracker.onAttack();
+            if (player == Minecraft.getInstance().player) {
+                String type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getPath();
+                Tracker.onAttack(type, entity.isInvisible());
+            }
             return InteractionResult.PASS;
         });
 
@@ -108,56 +111,55 @@ public final class FarmProfitClient implements ClientModInitializer {
                     if (!chat) HudEditor.reset();
                     if (!cfg.hudEnabled || mc.options.hideGui || mc.player == null) return;
 
-                    // optional scaling (quietly off if not available on this version)
-                    float scale = (float) Math.max(0.5, Math.min(3.0, cfg.hudScale));
+                    List<HudEditor.Box> boxes = HudRenderer.layout(mc);
+                    if (boxes.isEmpty()) return;
+                    int[] hovered = chat ? HudEditor.update(mc, boxes) : null;
                     Object pose = Reflect.call(graphics, "pose");
-                    boolean scaled = false;
-                    if (Math.abs(scale - 1f) > 0.01f && Reflect.call(pose, "pushMatrix") != Reflect.FAIL) {
-                        scaled = Reflect.call(pose, "scale", scale, scale) != Reflect.FAIL;
-                        if (!scaled) Reflect.call(pose, "popMatrix");
-                        Debug.scaleWorks = scaled;
-                    }
-                    float eff = scaled ? scale : 1f;
 
-                    // panels: main HUD, then the bazaar orders panel (own position, or under the main one)
-                    List<HudEditor.Box> boxes = new ArrayList<>();
-                    Hud.Lines main = Hud.lines();
-                    int mx = Math.round(cfg.hudX / eff), my = Math.round(cfg.hudY / eff);
-                    if (!main.isEmpty()) boxes.add(layout("main", main, mx, my, mc, cfg));
-                    Hud.Lines bz = Bazaar.hudLines();
-                    if (!bz.isEmpty()) {
-                        int bx = cfg.bazaarHudX >= 0 ? Math.round(cfg.bazaarHudX / eff) : mx;
-                        int by = cfg.bazaarHudY >= 0 ? Math.round(cfg.bazaarHudY / eff)
-                                : (boxes.isEmpty() ? my : my + boxes.get(0).h() + 10);
-                        boxes.add(layout("bazaar", bz, bx, by, mc, cfg));
-                    }
-                    if (boxes.isEmpty()) { if (scaled) Reflect.call(pose, "popMatrix"); return; }
-
-                    int[] hovered = chat ? HudEditor.update(mc, boxes, eff) : null;
                     for (int b = 0; b < boxes.size(); b++) {
                         HudEditor.Box box = boxes.get(b);
-                        graphics.fill(box.x() - 3, box.y() - 3, box.x() + box.w() + 3, box.y() + box.h() + 1, chat ? 0xB0000000 : 0x90000000);
-                        if (hovered != null && hovered[0] == b && hovered[1] >= 0 && box.lines().get(hovered[1]).item() != null) {
-                            int hy = box.y() + hovered[1] * 10;
-                            graphics.fill(box.x() - 3, hy - 1, box.x() + box.w() + 3, hy + 9, 0x40FFFFFF);
+                        // each panel has its own size; quietly unscaled if this version can't scale
+                        float sc = box.scale();
+                        boolean scaled = false;
+                        if (Math.abs(sc - 1f) > 0.01f && Reflect.call(pose, "pushMatrix") != Reflect.FAIL) {
+                            scaled = Reflect.call(pose, "scale", sc, sc) != Reflect.FAIL;
+                            if (!scaled) Reflect.call(pose, "popMatrix");
+                            Debug.scaleWorks = scaled;
+                        }
+                        float eff = scaled ? sc : 1f;
+                        int x = Math.round(box.x() / eff), y = Math.round(box.y() / eff), lh = box.lineH();
+
+                        int alpha = Math.max(0, Math.min(255, chat ? Math.max(cfg.hudOpacity, 176) : cfg.hudOpacity));
+                        if (box.hidden()) alpha = 60;
+                        if (alpha > 0) graphics.fill(x - 3, y - 3, x + box.w() + 3, y + box.h() + 1, alpha << 24);
+                        if (HudRenderer.editMode || (chat && hovered != null && hovered[0] == b)) {
+                            int c = box.hidden() ? 0x80FF5555 : 0xFFFFAA00;          // outline while editing
+                            graphics.fill(x - 4, y - 4, x + box.w() + 4, y - 3, c);
+                            graphics.fill(x - 4, y + box.h() + 1, x + box.w() + 4, y + box.h() + 2, c);
+                            graphics.fill(x - 4, y - 3, x - 3, y + box.h() + 1, c);
+                            graphics.fill(x + box.w() + 3, y - 3, x + box.w() + 4, y + box.h() + 1, c);
+                        }
+                        if (hovered != null && hovered[0] == b && box.lines().get(hovered[1]).item() != null) {
+                            int hy = y + hovered[1] * lh;
+                            graphics.fill(x - 3, hy - 1, x + box.w() + 3, hy + lh - 1, 0x40FFFFFF);
                         }
                         for (int i = 0; i < box.lines().size(); i++) {
                             Hud.HudLine l = box.lines().get(i);
-                            int ly = box.y() + i * 10, tx = box.x();
+                            int ly = y + i * lh, tx = x;
                             Object icon = cfg.hudIcons ? Tracker.icon(l.item()) : null;
                             if (icon != null) {
-                                drawIcon(graphics, pose, icon, box.x(), ly);
+                                drawIcon(graphics, pose, icon, x, ly);
                                 tx += 11;
                             }
-                            graphics.text(mc.font, l.text(), tx, ly, 0xFFFFFFFF, true);
+                            graphics.text(mc.font, (box.hidden() ? "§8" : "") + l.text(), tx, ly, 0xFFFFFFFF, cfg.hudShadow);
                         }
+                        if (scaled) Reflect.call(pose, "popMatrix");
                     }
                     if (chat) {
                         HudEditor.Box last = boxes.get(boxes.size() - 1);
-                        graphics.text(mc.font, "§7Drag panels to move §8| §7Right-click an item to hide it",
-                                boxes.get(0).x(), last.y() + last.h() + 4, 0xFFFFFFFF, true);
+                        graphics.text(mc.font, "§7Drag: move §8| §7Middle-click: size §8| §7Right-click title: hide §8| §7Right-click item: don't count",
+                                boxes.get(0).x(), last.bottom() + 4, 0xFFFFFFFF, true);
                     }
-                    if (scaled) Reflect.call(pose, "popMatrix");
                 });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -174,15 +176,6 @@ public final class FarmProfitClient implements ClientModInitializer {
             dispatcher.register(ClientCommands.literal("profitsettings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }));
         });
         LOG.info("Profit Counter loaded");
-    }
-
-    private static HudEditor.Box layout(String id, Hud.Lines lines, int x, int y, Minecraft mc, Config cfg) {
-        int w = 0;
-        for (Hud.HudLine l : lines) {
-            boolean icon = cfg.hudIcons && Tracker.icon(l.item()) != null;
-            w = Math.max(w, mc.font.width(l.text()) + (icon ? 11 : 0));
-        }
-        return new HudEditor.Box(id, lines, x, y, w, lines.size() * 10);
     }
 
     /** Draws a 16px item icon shrunk to fit a 10px line. Silently skipped if not possible. */
@@ -234,13 +227,46 @@ public final class FarmProfitClient implements ClientModInitializer {
                         })))
                 .then(ClientCommands.literal("scale")
                         .then(ClientCommands.argument("size", DoubleArgumentType.doubleArg(0.5, 3.0)).executes(ctx -> {
-                            Config.get().hudScale = DoubleArgumentType.getDouble(ctx, "size");
-                            Config.save();
-                            Tracker.say("§6[Profit] §7HUD scale set to §f" + Config.get().hudScale);
+                            Panels.Pos pos = Panels.get(Panels.key("main", Tracker.shownType()));
+                            pos.scale = DoubleArgumentType.getDouble(ctx, "size");
+                            Panels.save();
+                            Tracker.say("§6[Profit] §7HUD scale set to §f" + pos.scale + " §8(middle-click a panel with chat open to size each one)");
                             return 1;
                         })))
                 .then(ClientCommands.literal("settings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }))
                 .then(ClientCommands.literal("debug").executes(ctx -> { Debug.show(); return 1; }))
+                .then(ClientCommands.literal("report").executes(ctx -> { report(); return 1; }))
+                .then(ClientCommands.literal("setup").executes(ctx -> { SetupScreen.requestOpen(); return 1; }))
+                .then(ClientCommands.literal("dedupe").executes(ctx -> {
+                    Dedupe.turnOff();
+                    Tracker.say("§6[Profit] §7Done. Turn them back on any time in the settings.");
+                    return 1;
+                }))
+                .then(ClientCommands.literal("gui")
+                        .executes(ctx -> { GuiEditor.open(); return 1; })
+                        .then(ClientCommands.literal("reset").executes(ctx -> {
+                            Panels.reset();
+                            Tracker.say("§6[Profit] §7HUD layout reset.");
+                            return 1;
+                        })))
+                .then(ClientCommands.literal("note")
+                        .then(ClientCommands.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
+                            String type = typeFor(fixed);
+                            Session s = type == null ? null : Tracker.sessions.get(type);
+                            if (s == null) { Tracker.say("§6[Profit] §7No session running to add a note to."); return 1; }
+                            s.note = StringArgumentType.getString(ctx, "text");
+                            Tracker.say("§6[Profit] §7Note added to this " + s.type + " session: §f" + s.note);
+                            return 1;
+                        })))
+                .then(ClientCommands.literal("profile")
+                        .then(ClientCommands.literal("list").executes(ctx -> { Profiles.list(); return 1; }))
+                        .then(ClientCommands.literal("export").executes(ctx -> { Profiles.export(); return 1; }))
+                        .then(ClientCommands.literal("save").then(ClientCommands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> { Profiles.save(StringArgumentType.getString(ctx, "name")); return 1; })))
+                        .then(ClientCommands.literal("load").then(ClientCommands.argument("name", StringArgumentType.word())
+                                .executes(ctx -> { Profiles.load(StringArgumentType.getString(ctx, "name")); return 1; })))
+                        .then(ClientCommands.literal("import").then(ClientCommands.argument("code", StringArgumentType.greedyString())
+                                .executes(ctx -> { Profiles.importCode(StringArgumentType.getString(ctx, "code")); return 1; }))))
                 .then(ClientCommands.literal("export").executes(ctx -> { exportCsv(); return 1; }))
                 .then(ClientCommands.literal("secrets").executes(ctx -> {
                     Config.get().secretFinder = !Config.get().secretFinder;
@@ -254,11 +280,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                     Tracker.say("§6[Profit] §7Item icons " + (Config.get().hudIcons ? "§aon" : "§coff"));
                     return 1;
                 }))
-                .then(ClientCommands.literal("edit").executes(ctx -> {
-                    Tracker.say("§6[Profit] §7Open chat (§fT§7), then drag the HUD with the left mouse button. "
-                            + "Right-click an item line to hide it.");
-                    return 1;
-                }))
+                .then(ClientCommands.literal("edit").executes(ctx -> { GuiEditor.open(); return 1; }))
                 .then(ClientCommands.literal("hud").executes(ctx -> {
                     Config.get().hudEnabled = !Config.get().hudEnabled;
                     Config.save();
@@ -275,9 +297,10 @@ public final class FarmProfitClient implements ClientModInitializer {
                 .then(ClientCommands.literal("move")
                         .then(ClientCommands.argument("x", IntegerArgumentType.integer(0))
                                 .then(ClientCommands.argument("y", IntegerArgumentType.integer(0)).executes(ctx -> {
-                                    Config.get().hudX = IntegerArgumentType.getInteger(ctx, "x");
-                                    Config.get().hudY = IntegerArgumentType.getInteger(ctx, "y");
-                                    Config.save();
+                                    Panels.Pos pos = Panels.get(Panels.key("main", Tracker.shownType()));
+                                    pos.x = IntegerArgumentType.getInteger(ctx, "x");
+                                    pos.y = IntegerArgumentType.getInteger(ctx, "y");
+                                    Panels.save();
                                     Tracker.say("§6[Profit] §7HUD moved.");
                                     return 1;
                                 }))))
@@ -327,9 +350,33 @@ public final class FarmProfitClient implements ClientModInitializer {
                 + "; pests, rare drops and powder aren't included.");
     }
 
+    /** Everything needed to fix detection problems, copied to the clipboard to paste into a chat with Claude. */
+    private static void report() {
+        StringBuilder r = new StringBuilder("SkyBlock Profit Counter report\n");
+        r.append("build ").append(UpdateCheck.thisCommit()).append(", area=").append(Tracker.areaName)
+                .append(", hud=").append(Tracker.area).append(", modapi=").append(HypixelLocation.active)
+                .append(" mode=").append(HypixelLocation.mode).append(" map=").append(HypixelLocation.map).append('\n');
+        r.append("tab keys: ").append(String.join(", ", Tracker.tab.keySet())).append('\n');
+        r.append("purse=").append(Tracker.purse).append(" floor=").append(Tracker.dungeonFloor)
+                .append(" prices=").append(Prices.bazaarCount()).append('/').append(Prices.itemCount()).append('/').append(Prices.binCount()).append('\n');
+        r.append("icons=").append(Debug.iconsWork).append(" scale=").append(Debug.scaleWorks).append(" mouse=").append(Debug.mouseWorks).append('\n');
+        r.append("recognised: ").append(Debug.SEEN).append('\n');
+        r.append("action bar: ").append(Debug.lastActionBar).append('\n');
+        r.append("unrecognised messages:\n");
+        try {
+            java.nio.file.Path f = Config.DIR.resolve("unrecognised-messages.txt");
+            if (java.nio.file.Files.exists(f)) {
+                List<String> lines = java.nio.file.Files.readAllLines(f);
+                for (String l : lines.subList(Math.max(0, lines.size() - 40), lines.size())) r.append("  ").append(l).append('\n');
+            }
+        } catch (Exception ignored) {}
+        if (Chat.copy(r.toString())) Tracker.say("§6[Profit] §7Report copied to your clipboard. Paste it into your chat with Claude.");
+        else Tracker.say("§6[Profit] §7Couldn't copy. Send config/farmprofit/unrecognised-messages.txt and a /profit debug screenshot instead.");
+    }
+
     private static void exportCsv() {
         try {
-            StringBuilder csv = new StringBuilder("date,activity,main,active_minutes,profit,profit_per_hour,runs_or_bosses\n");
+            StringBuilder csv = new StringBuilder("date,activity,main,active_minutes,profit,profit_per_hour,runs_or_bosses,note\n");
             var fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
             for (Session s : History.all()) {
                 String type = Tracker.normalType(s.type);
@@ -337,7 +384,8 @@ public final class FarmProfitClient implements ClientModInitializer {
                 csv.append(fmt.format(new java.util.Date(s.start))).append(',').append(type).append(",\"")
                         .append(String.valueOf(s.mainCrop).replace("\"", "'")).append("\",")
                         .append(s.durationMs(0) / 60000).append(',').append(Math.round(s.profit)).append(',')
-                        .append(Math.round(s.profitPerHour)).append(',').append(count).append('\n');
+                        .append(Math.round(s.profitPerHour)).append(',').append(count).append(",\"")
+                        .append(s.note == null ? "" : s.note.replace("\"", "'")).append("\"\n");
             }
             java.nio.file.Path file = Config.DIR.resolve("history.csv");
             java.nio.file.Files.writeString(file, csv.toString());
@@ -382,14 +430,8 @@ public final class FarmProfitClient implements ClientModInitializer {
         long now = System.currentTimeMillis();
         String text = s.type + ": " + Fmt.coins(s.value()) + " coins in " + Fmt.duration(s.durationMs(now))
                 + " (" + Fmt.coins(s.perHour(now)) + "/h)";
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            Object kb = mc.getClass().getField("keyboardHandler").get(mc);
-            kb.getClass().getMethod("setClipboard", String.class).invoke(kb, text);
-            Tracker.say("§6[Profit] §7Copied: §f" + text);
-        } catch (Exception e) {
-            Tracker.say("§6[Profit] §7Couldn't copy, here it is: §f" + text);
-        }
+        if (Chat.copy(text)) Tracker.say("§6[Profit] §7Copied: §f" + text);
+        else Tracker.say("§6[Profit] §7Couldn't copy, here it is: §f" + text);
     }
 
     private static boolean matches(Session s, String fixed) {
@@ -413,6 +455,7 @@ public final class FarmProfitClient implements ClientModInitializer {
             Tracker.say("§8" + fmt.format(new java.util.Date(s.start)) + " " + Hud.title(type).replace("§l", "")
                     + " §a" + s.mainCrop + " §7" + Fmt.duration(s.durationMs(0)) + " §6" + Fmt.coins(s.profit)
                     + " §7(§6" + Fmt.coins(s.profitPerHour) + "/h§7)");
+            if (s.note != null) Tracker.say("   §7Note: §f" + s.note);
             if (s.shards != null && !s.shards.isEmpty()) Tracker.say(list("   §bShards: ", s.shards));
             if (s.rareDrops != null && !s.rareDrops.isEmpty()) Tracker.say(list("   §dRare: ", s.rareDrops));
         }

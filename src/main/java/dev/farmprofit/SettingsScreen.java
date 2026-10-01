@@ -1,5 +1,6 @@
 package dev.farmprofit;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.StringWidget;
@@ -17,21 +18,26 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Settings menu (/profit settings). Built automatically from the fields in Config:
- * anything marked with @Setting appears in its category, anything else under "Other",
- * so new features show up here without extra work.
+ * Settings menu (O key, /profit settings, or Mod Menu). Built automatically from Config:
+ * anything marked @Setting appears in its tab, anything else under "Other", so new features show up by themselves.
+ * Search box, per-setting and per-tab reset, and a Hidden items list.
  */
 public final class SettingsScreen extends Screen {
-    private static final String OTHER = "Other";
-    /** Tab order. Categories not listed here come after these (and before "Other"). */
+    private static final String OTHER = "Other", HIDDEN = "Hidden items", RESULTS = "Search";
     private static final List<String> ORDER = List.of("General", "HUD", "Farming", "Mining", "Foraging", "Fishing",
             "Combat & Slayers", "Dungeons", "Kuudra", "Diana", "Bazaar flipping", "Items & areas");
     private static String category;
+    private static String query = "";
+    private final Screen parent;
     private int page;
-    private final List<Runnable> pending = new ArrayList<>();   // text boxes are applied on page change / close
+    private final List<Runnable> pending = new ArrayList<>();
+    private static final Config DEFAULTS = new Config();
 
-    public SettingsScreen() {
+    public SettingsScreen() { this(null); }
+
+    public SettingsScreen(Screen parent) {
         super(Component.literal("Profit Counter Settings"));
+        this.parent = parent;
     }
 
     // ---------------- which fields go where ----------------
@@ -43,20 +49,22 @@ public final class SettingsScreen extends Screen {
             int mod = f.getModifiers();
             if (Modifier.isStatic(mod) || Modifier.isTransient(mod) || !Modifier.isPublic(mod)) continue;
             Setting s = f.getAnnotation(Setting.class);
+            if (s != null && s.hidden()) continue;
             if (s == null) other.add(f);
             else map.computeIfAbsent(s.category(), k -> new ArrayList<>()).add(f);
         }
         Map<String, List<Field>> sorted = new LinkedHashMap<>();
         for (String c : ORDER) if (map.containsKey(c)) sorted.put(c, map.get(c));
-        map.forEach((c, f) -> sorted.putIfAbsent(c, f));
+        map.forEach(sorted::putIfAbsent);
         if (!other.isEmpty()) sorted.put(OTHER, other);
+        sorted.put(HIDDEN, List.of());
         return sorted;
     }
 
     private static String label(Field f) {
         Setting s = f.getAnnotation(Setting.class);
         if (s != null) return s.label();
-        String n = f.getName().replaceAll("([a-z])([A-Z])", "$1 $2");   // camelCase -> words
+        String n = f.getName().replaceAll("([a-z])([A-Z])", "$1 $2");
         return Character.toUpperCase(n.charAt(0)) + n.substring(1).toLowerCase(Locale.ROOT);
     }
 
@@ -65,60 +73,135 @@ public final class SettingsScreen extends Screen {
         return s != null && !s.desc().isEmpty() ? s.desc() : "Setting \"" + f.getName() + "\" in config.json";
     }
 
+    private static String tabOf(Field f) {
+        Setting s = f.getAnnotation(Setting.class);
+        return s == null ? OTHER : s.category();
+    }
+
     // ---------------- layout ----------------
 
     @Override
     protected void init() {
         pending.clear();
         Map<String, List<Field>> cats = categories();
-        if (category == null || !cats.containsKey(category)) category = cats.keySet().iterator().next();
+        if (category == null || !(cats.containsKey(category) || category.equals(RESULTS))) category = cats.keySet().iterator().next();
 
-        // category tabs (wrap onto more rows if needed)
-        int x = 10, y = 8;
+        // search box
+        EditBox search = new EditBox(font, 10, 8, 160, 18, Component.literal("Search"));
+        search.setMaxLength(50);
+        search.setValue(query);
+        search.setHint(Component.literal("§8Search settings..."));
+        search.setResponder(text -> {
+            if (text.equals(query)) return;
+            applyPending();
+            query = text;
+            category = text.isBlank() ? (category.equals(RESULTS) ? ORDER.get(0) : category) : RESULTS;
+            page = 0;
+            rebuildWidgets();
+        });
+        addRenderableWidget(search);
+        setFocused(search);
+
+        // tabs
+        int x = 178, y = 8;
         for (String cat : cats.keySet()) {
-            int w = font.width(cat) + 16;
+            int w = font.width(cat) + 12;
             if (x + w > width - 10) { x = 10; y += 22; }
             final String c = cat;
             addRenderableWidget(Button.builder(Component.literal(cat.equals(category) ? "§e§l" + cat : cat), b -> {
                 applyPending();
                 category = c;
+                query = "";
                 page = 0;
                 rebuildWidgets();
-            }).bounds(x, y, w, 20).build());
-            x += w + 4;
+            }).bounds(x, y, w, 18).build());
+            x += w + 3;
         }
 
-        // rows of settings
-        int top = y + 30, rowH = 24, bottom = height - 34;
-        int perPage = Math.max(1, (bottom - top) / rowH);
-        List<Field> fields = cats.get(category);
-        int pages = (fields.size() + perPage - 1) / perPage;
-        page = Math.max(0, Math.min(page, pages - 1));
+        // which rows to show
+        List<Field> fields;
+        if (category.equals(RESULTS)) {
+            fields = new ArrayList<>();
+            String q = query.toLowerCase(Locale.ROOT);
+            for (List<Field> list : cats.values()) for (Field f : list) {
+                if (label(f).toLowerCase(Locale.ROOT).contains(q) || desc(f).toLowerCase(Locale.ROOT).contains(q)) fields.add(f);
+            }
+        } else {
+            fields = cats.getOrDefault(category, List.of());
+        }
 
-        int labelW = 170, controlW = 180;
-        int left = Math.max(10, width / 2 - (labelW + controlW + 10) / 2);
+        int top = y + 28, rowH = 24, bottom = height - 34;
+        int perPage = Math.max(1, (bottom - top) / rowH);
+        int labelW = 170, controlW = 170;
+        int left = Math.max(10, width / 2 - (labelW + controlW + 34) / 2);
+
+        if (category.equals(HIDDEN)) {
+            List<String> hidden = Config.get().ignoredItems;
+            int pages = Math.max(1, (hidden.size() + perPage - 1) / perPage);
+            page = Math.max(0, Math.min(page, pages - 1));
+            if (hidden.isEmpty()) addRenderableWidget(new StringWidget(left, top + 6, 340, 10,
+                    Component.literal("§7Nothing hidden. Right-click an item on the HUD (chat open) to stop counting it."), font));
+            int row = 0;
+            for (int i = page * perPage; i < Math.min(hidden.size(), (page + 1) * perPage); i++, row++) {
+                String item = hidden.get(i);
+                int ry = top + row * rowH;
+                addRenderableWidget(new StringWidget(left, ry + 6, labelW, 10, Component.literal(item), font));
+                addRenderableWidget(Button.builder(Component.literal("§aCount again"), b -> {
+                    Config.get().ignoredItems.remove(item);
+                    Config.save();
+                    rebuildWidgets();
+                }).bounds(left + labelW + 10, ry, controlW, 20).build());
+            }
+            bottomBar(pages);
+            return;
+        }
+
+        int pages = Math.max(1, (fields.size() + perPage - 1) / perPage);
+        page = Math.max(0, Math.min(page, pages - 1));
+        if (fields.isEmpty()) addRenderableWidget(new StringWidget(left, top + 6, 300, 10, Component.literal("§7No settings match."), font));
         int row = 0;
         for (int i = page * perPage; i < Math.min(fields.size(), (page + 1) * perPage); i++, row++) {
             Field f = fields.get(i);
             int ry = top + row * rowH;
-            StringWidget lbl = new StringWidget(left, ry + 6, labelW, 10, Component.literal(label(f)), font);
+            String text = label(f) + (category.equals(RESULTS) ? " §8(" + tabOf(f) + ")" : "");
+            StringWidget lbl = new StringWidget(left, ry + 6, labelW, 10, Component.literal(text), font);
             lbl.setTooltip(Tooltip.create(Component.literal(desc(f))));
             addRenderableWidget(lbl);
             addControl(f, left + labelW + 10, ry, controlW);
+            Button reset = Button.builder(Component.literal("↺"), b -> { applyPending(); resetField(f); rebuildWidgets(); })
+                    .bounds(left + labelW + controlW + 14, ry, 20, 20).build();
+            reset.setTooltip(Tooltip.create(Component.literal("Reset to default: " + toText(get(f, DEFAULTS)))));
+            addRenderableWidget(reset);
         }
+        bottomBar(pages);
+    }
 
-        // bottom bar
+    private void bottomBar(int pages) {
         int by = height - 28;
         if (pages > 1) {
-            addRenderableWidget(Button.builder(Component.literal("< Prev"), b -> { applyPending(); page--; rebuildWidgets(); })
-                    .bounds(width / 2 - 154, by, 70, 20).build()).active = page > 0;
-            addRenderableWidget(new StringWidget(width / 2 - 80, by + 6, 60, 10,
-                    Component.literal("§7" + (page + 1) + " / " + pages), font));
-            addRenderableWidget(Button.builder(Component.literal("Next >"), b -> { applyPending(); page++; rebuildWidgets(); })
-                    .bounds(width / 2 - 20, by, 70, 20).build()).active = page < pages - 1;
+            addRenderableWidget(Button.builder(Component.literal("<"), b -> { applyPending(); page--; rebuildWidgets(); })
+                    .bounds(width / 2 - 150, by, 24, 20).build()).active = page > 0;
+            addRenderableWidget(new StringWidget(width / 2 - 122, by + 6, 40, 10, Component.literal("§7" + (page + 1) + "/" + pages), font));
+            addRenderableWidget(Button.builder(Component.literal(">"), b -> { applyPending(); page++; rebuildWidgets(); })
+                    .bounds(width / 2 - 80, by, 24, 20).build()).active = page < pages - 1;
         }
-        addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-                .bounds(width / 2 + 60, by, 90, 20).build());
+        if (!category.equals(RESULTS) && !category.equals(HIDDEN)) {
+            Button resetTab = Button.builder(Component.literal("Reset tab"), b -> {
+                applyPending();
+                for (Field f : categories().getOrDefault(category, List.of())) resetField(f);
+                rebuildWidgets();
+            }).bounds(width / 2 - 50, by, 70, 20).build();
+            resetTab.setTooltip(Tooltip.create(Component.literal("Puts every setting in this tab back to its default.")));
+            addRenderableWidget(resetTab);
+        }
+        if (category.equals("HUD")) {
+            addRenderableWidget(Button.builder(Component.literal("Edit HUD layout"), b -> {
+                onClose();
+                GuiEditor.open();
+            }).bounds(10, by, 100, 20).build()).setTooltip(Tooltip.create(Component.literal(
+                    "Move, resize and hide each panel. Same as /profit gui.")));
+        }
+        addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(width / 2 + 30, by, 80, 20).build());
     }
 
     /** The right control for the field's type. */
@@ -155,7 +238,6 @@ public final class SettingsScreen extends Screen {
                 addRenderableWidget(b);
                 return;
             }
-            // everything else: a text box
             EditBox box = new EditBox(font, x, y, w, 20, Component.literal(label(f)));
             box.setMaxLength(2000);
             box.setValue(toText(f.get(cfg)));
@@ -169,6 +251,23 @@ public final class SettingsScreen extends Screen {
 
     private static Component onOff(boolean v) { return Component.literal(v ? "§aON" : "§cOFF"); }
 
+    // ---------------- reset ----------------
+
+    private static Object get(Field f, Config c) {
+        try { return f.get(c); } catch (Exception e) { return null; }
+    }
+
+    private static void resetField(Field f) {
+        try {
+            Object def = f.get(DEFAULTS);
+            if (def instanceof List<?> || def instanceof Map<?, ?>) {   // copy so the defaults stay untouched
+                def = Config.GSON.fromJson(Config.GSON.toJson(def), f.getGenericType());
+            }
+            f.set(Config.get(), def);
+            Config.save();
+        } catch (Exception ignored) {}
+    }
+
     // ---------------- value <-> text ----------------
 
     private static String toText(Object v) {
@@ -180,6 +279,7 @@ public final class SettingsScreen extends Screen {
             m.forEach((k, val) -> parts.add(k + "=" + val));
             return String.join(", ", parts);
         }
+        if (v instanceof Boolean b) return b ? "ON" : "OFF";
         return String.valueOf(v);
     }
 
@@ -190,8 +290,8 @@ public final class SettingsScreen extends Screen {
         try {
             Class<?> t = f.getType();
             if (t == int.class || t == long.class || t == double.class || t == float.class) {
-                double v = FlipsCommand.parseAmount(text);   // accepts 10m, 500k, 1.5b
-                if (Double.isNaN(v)) return;                 // invalid: keep the old value
+                double v = FlipsCommand.parseAmount(text);
+                if (Double.isNaN(v)) return;
                 if (s != null) v = Math.max(s.min(), Math.min(s.max(), v));
                 if (t == int.class) f.setInt(cfg, (int) Math.round(v));
                 else if (t == long.class) f.setLong(cfg, Math.round(v));
@@ -216,25 +316,25 @@ public final class SettingsScreen extends Screen {
 
     private void applyPending() {
         for (Runnable r : pending) r.run();
+        pending.clear();
         Config.save();
     }
 
     @Override
     public void onClose() {
         applyPending();
-        super.onClose();
+        Minecraft.getInstance().setScreen(parent);
     }
 
     // ---------------- opening ----------------
 
     private static boolean openNextTick;
 
-    /** Called from a command: opens next tick, after the chat screen has closed. */
     public static void requestOpen() { openNextTick = true; }
 
-    public static void requestOpen(String tab) { category = tab; openNextTick = true; }
+    public static void requestOpen(String tab) { category = tab; query = ""; openNextTick = true; }
 
-    static void tick(net.minecraft.client.Minecraft mc) {
+    static void tick(Minecraft mc) {
         if (openNextTick && mc.screen == null) {
             openNextTick = false;
             mc.setScreen(new SettingsScreen());

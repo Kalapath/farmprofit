@@ -17,6 +17,120 @@ public final class Config {
     private static Config instance;
 
     /** Minutes without activity before a session resets. */
+    @Setting(category = "General", label = "Switch HUD on arrival", desc = "Arriving on an island (Garden, Galatea, Mines...) switches the HUD to it right away.")
+    public boolean switchHudOnArrival = true;
+    @Setting(category = "General", label = "Session end message", desc = "Chat summary when a session ends and is saved.")
+    public boolean announceSessionEnd = true;
+    @Setting(category = "General", label = "Number format", desc = "compact = 1.2M, full = 1,234,567.", options = {"compact", "full"})
+    public String numberFormat = "compact";
+    @Setting(category = "HUD", label = "Background opacity", desc = "0 = invisible, 255 = solid black.", min = 0, max = 255)
+    public int hudOpacity = 144;
+    @Setting(category = "HUD", label = "Line height", desc = "Pixels per line (10 = default).", min = 8, max = 20)
+    public int hudLineHeight = 10;
+    @Setting(category = "HUD", label = "Text shadow", desc = "Drop shadow behind HUD text.")
+    public boolean hudShadow = true;
+    @Setting(category = "HUD", label = "Show title", desc = "The activity name at the top of the HUD.")
+    public boolean hudShowTitle = true;
+    @Setting(category = "HUD", label = "Show session time", desc = "The Time line.")
+    public boolean hudShowTime = true;
+    @Setting(category = "HUD", label = "Show profit/h", desc = "The Profit/h line.")
+    public boolean hudShowRate = true;
+    @Setting(category = "HUD", label = "Show item list", desc = "The Items section.")
+    public boolean hudShowItems = true;
+    @Setting(category = "HUD", label = "Show spent / costs", desc = "Spent, costs and copper lines.")
+    public boolean hudShowCosts = true;
+    @Setting(category = "HUD", label = "Show reset countdown", desc = "The 'Paused - resets in' line when you're idle.")
+    public boolean hudShowCountdown = true;
+    @Setting(category = "HUD", label = "Rare drops shown", desc = "How many rare drops the HUD lists.", min = 0, max = 20)
+    public int hudMaxRare = 4;
+    @Setting(category = "HUD", label = "Shards shown", desc = "How many shards the HUD lists.", min = 0, max = 20)
+    public int hudMaxShards = 4;
+    @Setting(category = "Farming", label = "Show fortune", desc = "Farming Fortune line (needs the Stats tab widget).")
+    public boolean farmShowFortune = true;
+    @Setting(category = "Farming", label = "Show crop and blocks/s", desc = "The 'Farming: Wheat (1,234 broken, 19.5 BPS)' line.")
+    public boolean farmShowBps = true;
+    @Setting(category = "Farming", label = "Show pests", desc = "Pests killed by type.")
+    public boolean farmShowPests = true;
+    @Setting(category = "Farming", label = "Show visitors", desc = "Garden visitors accepted.")
+    public boolean farmShowVisitors = true;
+    @Setting(category = "Farming", label = "Contest reminder", desc = "Chat ping 1 minute before a Jacob's contest starts.")
+    public boolean contestAlert = true;
+    @Setting(category = "Mining", label = "Show mining stats", desc = "Mining Speed / Fortune lines (needs the Stats tab widget).")
+    public boolean mineShowStats = true;
+    @Setting(category = "Mining", label = "Show powder", desc = "Powder gained and per hour.")
+    public boolean mineShowPowder = true;
+    @Setting(category = "Mining", label = "Show pristine", desc = "Pristine procs (Crystal Hollows, Mineshafts).")
+    public boolean mineShowPristine = true;
+    @Setting(category = "Mining", label = "Show block breakdown", desc = "Which blocks you've mined, by type.")
+    public boolean mineShowBlocks = true;
+    @Setting(category = "Mining", label = "Blocks listed", desc = "How many block types the breakdown shows.", min = 1, max = 20)
+    public int mineBlocksShown = 4;
+    @Setting(category = "Foraging", label = "Show foraging stats", desc = "Sweep / Foraging Fortune lines (needs the Stats tab widget).")
+    public boolean forShowStats = true;
+    @Setting(category = "Foraging", label = "Show tree gifts", desc = "Tree Gifts and trees per minute.")
+    public boolean forShowTrees = true;
+    @Setting(category = "Foraging", label = "Show Forest Whispers", desc = "Forest Whispers gained and per hour.")
+    public boolean forShowWhispers = true;
+    @Setting(category = "Foraging", label = "Count any log", desc = "Count log blocks the mod doesn't know by name (new woods).")
+    public boolean countAnyLog = true;
+    @Setting(category = "Fishing", label = "Show fishing stats", desc = "Fishing Speed, Sea Creature Chance... (needs the Stats tab widget).")
+    public boolean fishShowStats = true;
+    @Setting(category = "Fishing", label = "Show location", desc = "Where you're fishing.")
+    public boolean fishShowLocation = true;
+    @Setting(category = "Fishing", label = "Show trophy fish", desc = "Trophy fish by type.")
+    public boolean fishShowTrophies = true;
+    @Setting(category = "Fishing", label = "Count coin catches", desc = "Coins from GOOD/GREAT CATCH count as profit.")
+    public boolean fishCountCoins = true;
+    @Setting(category = "Fishing", label = "Keep fishing active (s)", desc = "Hits within this many seconds of using your rod count as fishing (sea creatures).", min = 5, max = 600)
+    public int fishingActiveSeconds = 60;
+    @Setting(category = "Combat & Slayers", label = "Hits to start combat", desc = "How many mob hits (within 30 s) start a Combat session. Players, NPCs and armor stands never count.", min = 1, max = 100)
+    public int combatStartHits = 5;
+    @Setting(category = "Combat & Slayers", label = "Only start on slayer quests", desc = "Combat sessions only start when you start a slayer quest.")
+    public boolean combatNeedsSlayer = false;
+    @Setting(category = "Combat & Slayers", label = "Show slayer bosses", desc = "Bosses killed and per hour.")
+    public boolean combatShowBosses = true;
+    @Setting(category = "Combat & Slayers", label = "Show Magic Find", desc = "Magic Find from the Stats tab widget.")
+    public boolean combatShowMagicFind = false;
+    @Setting(category = "Dungeons", label = "Show runs", desc = "Runs, average time and runs per hour.")
+    public boolean dungShowRuns = true;
+    @Setting(category = "Dungeons", label = "Show last score", desc = "Your last run's score.")
+    public boolean dungShowScore = true;
+    @Setting(category = "Dungeons", label = "Secrets listed", desc = "How many nearby secrets the finder lists.", min = 1, max = 15)
+    public int secretsShown = 5;
+    @Setting(category = "Dungeons", label = "Secret scan radius", desc = "How far (blocks) the finder looks around you.", min = 4, max = 32)
+    public int secretRadius = 14;
+    @Setting(category = "Dungeons", label = "Find chests", desc = "Include chests.")
+    public boolean secretChests = true;
+    @Setting(category = "Dungeons", label = "Find levers", desc = "Include levers.")
+    public boolean secretLevers = true;
+    @Setting(category = "Dungeons", label = "Find essence", desc = "Include Wither Essence skulls.")
+    public boolean secretEssence = true;
+    @Setting(category = "Dungeons", label = "Find items", desc = "Include secret items on the floor.")
+    public boolean secretItems = true;
+    @Setting(category = "Dungeons", label = "Find bats", desc = "Include bats.")
+    public boolean secretBats = true;
+    @Setting(category = "Kuudra", label = "Show runs", desc = "Runs and runs per hour.")
+    public boolean kuudraShowRuns = true;
+    @Setting(category = "Diana", label = "Show burrows", desc = "Burrows dug and per hour.")
+    public boolean dianaShowBurrows = true;
+    @Setting(category = "Bazaar flipping", label = "Orders on HUD", desc = "How many orders the orders panel lists.", min = 1, max = 30)
+    public int bzHudMaxOrders = 6;
+    @Setting(category = "Bazaar flipping", label = "Show today's flip profit", desc = "Flip profit today on the orders panel.")
+    public boolean bzShowToday = true;
+    @Setting(category = "Bazaar flipping", label = "Ding when an order fills", desc = "Sound when a buy order or sell offer is filled.")
+    public boolean bzFillSound = true;
+    @Setting(category = "HUD", label = "Separate small panels", desc = "Show the secret finder, Jacob's contest and 'Best now' as their own panels you can place anywhere (/profit gui).")
+    public boolean separatePanels = false;
+    @Setting(category = "HUD", label = "Position per activity", desc = "The main HUD remembers a different spot for each activity (Farming, Mining...).")
+    public boolean perActivityPositions = false;
+    @Setting(category = "General", label = "First-time setup done", desc = "Turn off to see the setup check again next time you join SkyBlock (or use /profit setup).")
+    public boolean setupDone = false;
+    @Setting(category = "General", label = "Warn about duplicate features", desc = "Tells you when SkyHanni, Skyblocker or Odin already do something this mod does, so you can turn one off.")
+    public boolean warnDuplicates = true;
+    @Setting(category = "General", label = "Check for new builds", desc = "Tells you when your GitHub repo has a newer successful build than the one you're running.")
+    public boolean updateCheck = true;
+    @Setting(category = "General", label = "GitHub repo", desc = "owner/name of the repo that builds this mod, e.g. Kalapath/farmprofit.")
+    public String updateRepo = "Kalapath/farmprofit";
     @Setting(category = "General", label = "Reset after (minutes)", desc = "Minutes without activity before a session ends and is saved to history.", min = 1, max = 600)
     public int resetMinutes = 15;
     /**
@@ -64,19 +178,19 @@ public final class Config {
     public String jacobContestsUrl = "https://api.elitebot.dev/contests/at/now";
     @Setting(category = "Farming", label = "Copper value (coins)", desc = "Coins each copper from Garden visitors is worth to you. 0 = don't count copper.", min = 0, max = 1e9)
     public double copperValue = 0;
-    @Setting(category = "Bazaar flipping", label = "Orders panel X", desc = "-1 = right under the main HUD. Or drag it with chat open.", min = -1, max = 10000)
+    @Setting(category = "Bazaar flipping", label = "Orders panel X", desc = "-1 = right under the main HUD. Or drag it with chat open.", min = -1, max = 10000, hidden = true)
     public int bazaarHudX = -1;
-    @Setting(category = "Bazaar flipping", label = "Orders panel Y", desc = "-1 = right under the main HUD. Or drag it with chat open.", min = -1, max = 10000)
+    @Setting(category = "Bazaar flipping", label = "Orders panel Y", desc = "-1 = right under the main HUD. Or drag it with chat open.", min = -1, max = 10000, hidden = true)
     public int bazaarHudY = -1;
     @Setting(category = "Bazaar flipping", label = "Warn about odd orders", desc = "Chat warning when an order you place is far from the market price (possible typo).")
     public boolean bzWarnMistakes = true;
-    @Setting(category = "HUD", label = "HUD X position", desc = "Or drag the HUD with chat open.", min = 0, max = 10000)
+    @Setting(category = "HUD", label = "HUD X position", desc = "Or drag the HUD with chat open.", min = 0, max = 10000, hidden = true)
     public int hudX = 5;
-    @Setting(category = "HUD", label = "HUD Y position", desc = "Or drag the HUD with chat open.", min = 0, max = 10000)
+    @Setting(category = "HUD", label = "HUD Y position", desc = "Or drag the HUD with chat open.", min = 0, max = 10000, hidden = true)
     public int hudY = 5;
     @Setting(category = "HUD", label = "Items shown", desc = "How many item lines the HUD lists before 'and X more'.", min = 1, max = 50)
     public int hudMaxItems = 6;
-    @Setting(category = "HUD", label = "HUD scale", desc = "0.5 to 3.", min = 0.5, max = 3)
+    @Setting(category = "HUD", label = "HUD scale", desc = "0.5 to 3.", min = 0.5, max = 3, hidden = true)
     public double hudScale = 1.0;
     @Setting(category = "HUD", label = "Item icons", desc = "Small icons next to items you've had in your inventory.")
     public boolean hudIcons = true;
@@ -193,6 +307,14 @@ public final class Config {
         if (instance.extraLogBlocks == null) instance.extraLogBlocks = new HashMap<>();
         if (instance.foragingAreas == null) instance.foragingAreas = new java.util.ArrayList<>(java.util.List.of("Galatea", "The Park"));
         save();
+    }
+
+    /** Swap in a whole new set of settings (profiles / import). */
+    public static void replace(Config c) {
+        if (c == null) return;
+        instance = c;
+        save();
+        load();     // fills in anything missing
     }
 
     public static void save() {

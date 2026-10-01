@@ -3,15 +3,23 @@
   "id": "farmprofit",
   "version": "${version}",
   "name": "SkyBlock Profit Counter",
-  "description": "Profit tracker for Hypixel SkyBlock farming, mining, foraging, fishing and slayers.",
-  "authors": ["you"],
+  "description": "Display-only profit tracker for Hypixel SkyBlock: farming, mining, foraging, fishing, combat, dungeons, Kuudra, Diana and Bazaar flipping.",
+  "authors": ["Kalapath"],
+  "contact": {
+    "sources": "https://github.com/Kalapath/farmprofit",
+    "issues": "https://github.com/Kalapath/farmprofit/issues"
+  },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.farmprofit.FarmProfitClient"]
+    "client": ["dev.farmprofit.FarmProfitClient"],
+    "modmenu": ["dev.farmprofit.ModMenuIntegration"]
   },
   "recommends": {
     "hypixel-mod-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
   },
   "depends": {
     "fabricloader": ">=0.18.4",

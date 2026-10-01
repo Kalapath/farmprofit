@@ -28,7 +28,10 @@ public final class Contests {
 
     public static boolean loaded() { return !CONTESTS.isEmpty(); }
 
+    private static long remindedFor;
+
     public static void tick() {
+        remind();
         String url = Config.get().jacobContestsUrl;
         if (url == null || url.isBlank()) return;
         long now = System.currentTimeMillis();
@@ -72,6 +75,16 @@ public final class Contests {
         String list = String.join(", ", crops);
         if (start <= now) return "§7Contest: §aNOW §e" + list + " §8(" + Fmt.clock(start + CONTEST_MS - now) + " left)";
         return "§7Next contest: §e" + list + " §7in " + Fmt.clock(start - now);
+    }
+
+    private static void remind() {
+        if (!Config.get().contestAlert) return;
+        long now = System.currentTimeMillis();
+        Long next = CONTESTS.ceilingKey(now);
+        if (next == null || next == remindedFor || next - now > 60_000) return;
+        remindedFor = next;
+        Chat.ping();
+        Tracker.say("§6[Farming] §eJacob's contest in " + Fmt.clock(next - now) + ": §f" + String.join(", ", CONTESTS.get(next)));
     }
 
     /** Is this crop in a contest that's running now? */

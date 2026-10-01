@@ -5,69 +5,103 @@ import net.minecraft.client.Minecraft;
 import java.util.List;
 
 /**
- * While chat is open: drag any HUD panel with the left mouse button (each keeps its own position),
- * right-click an item line to hide it.
+ * Editing panels while chat is open (or in /profit gui):
+ * left-drag = move, middle-click = change size, right-click the title = hide/show,
+ * click the main title = switch the all-time line, right-click an item = stop counting it.
  */
 final class HudEditor {
-    /** One panel as drawn this frame. x/y/w/h are in (scaled) drawing coordinates. */
-    record Box(String id, Hud.Lines lines, int x, int y, int w, int h) {}
+    /** One panel as placed this frame. x/y are screen coordinates; w/h are before scaling. */
+    record Box(String id, String key, Hud.Lines lines, int x, int y, int w, int h, int lineH, float scale, boolean hidden) {
+        int left() { return x - Math.round(3 * scale); }
+        int top() { return y - Math.round(3 * scale); }
+        int right() { return x + Math.round((w + 3) * scale); }
+        int bottom() { return y + Math.round((h + 1) * scale); }
+    }
 
-    private static boolean prevLeft, prevRight;
-    private static String dragging;
-    private static double offX, offY;
+    private static final double[] SIZES = {0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0};
+    private static boolean prevLeft, prevRight, prevMiddle, moved;
+    private static Box dragging;
+    private static double offX, offY, pressX, pressY;
 
-    /** Returns {panel index, line index} under the mouse, or null. */
-    static int[] update(Minecraft mc, List<Box> boxes, float scale) {
+    /** Returns {box index, line index} under the mouse, or null. */
+    static int[] update(Minecraft mc, List<Box> boxes) {
         if (!Mouse.update(mc)) { Debug.mouseWorks = false; return null; }
         Debug.mouseWorks = true;
-        Config cfg = Config.get();
-        double mx = Mouse.x / scale, my = Mouse.y / scale;
         int[] hovered = null;
         for (int b = boxes.size() - 1; b >= 0 && hovered == null; b--) {
             Box box = boxes.get(b);
-            if (mx >= box.x() - 3 && mx <= box.x() + box.w() + 3 && my >= box.y() - 3 && my <= box.y() + box.h() + 1) {
-                int i = (int) Math.floor((my - box.y()) / 10.0);
-                hovered = new int[]{b, Math.max(-1, Math.min(i, box.lines().size() - 1))};
+            if (Mouse.x >= box.left() && Mouse.x <= box.right() && Mouse.y >= box.top() && Mouse.y <= box.bottom()) {
+                int i = (int) Math.floor((Mouse.y - box.y()) / (box.lineH() * box.scale()));
+                hovered = new int[]{b, Math.max(0, Math.min(i, box.lines().size() - 1))};
             }
         }
 
+        // left button: drag to move, plain click on the main title switches the all-time line
         if (Mouse.left && !prevLeft && hovered != null) {
-            Box box = boxes.get(hovered[0]);
-            dragging = box.id();
-            double px = box.x() * scale, py = box.y() * scale;
-            offX = Mouse.x - px;
-            offY = Mouse.y - py;
+            dragging = boxes.get(hovered[0]);
+            offX = Mouse.x - dragging.x();
+            offY = Mouse.y - dragging.y();
+            pressX = Mouse.x;
+            pressY = Mouse.y;
+            moved = false;
         }
         if (dragging != null) {
             if (Mouse.left) {
-                int nx = (int) Math.max(0, Mouse.x - offX), ny = (int) Math.max(0, Mouse.y - offY);
-                if (dragging.equals("bazaar")) { cfg.bazaarHudX = nx; cfg.bazaarHudY = ny; }
-                else { cfg.hudX = nx; cfg.hudY = ny; }
+                if (Math.abs(Mouse.x - pressX) > 3 || Math.abs(Mouse.y - pressY) > 3) moved = true;
+                if (moved) {
+                    Panels.Pos p = Panels.get(dragging.key());
+                    p.x = (int) Math.max(0, Mouse.x - offX);
+                    p.y = (int) Math.max(0, Mouse.y - offY);
+                }
             } else {
+                if (!moved && dragging.id().equals("main") && hovered != null && hovered[1] == 0) {
+                    Config.get().hudShowTotal = !Config.get().hudShowTotal;
+                    Config.save();
+                    Tracker.say("§6[Profit] §7All-time line " + (Config.get().hudShowTotal ? "§aon" : "§coff"));
+                }
                 dragging = null;
-                Config.save();
+                Panels.save();
             }
         }
 
-        if (Mouse.right && !prevRight && hovered != null && hovered[1] >= 0) {
-            Hud.HudLine line = boxes.get(hovered[0]).lines().get(hovered[1]);
-            String item = line.item();
-            if (item != null && !cfg.ignoredItems.contains(item)) {
-                cfg.ignoredItems.add(item);
-                Config.save();
-                Tracker.say("§6[Profit] §7Hidden §f" + item + "§7 (not counted). Undo: §f/profit unignore " + item);
+        // middle button: cycle the panel's size
+        if (Mouse.middle && !prevMiddle && hovered != null) {
+            Panels.Pos p = Panels.get(boxes.get(hovered[0]).key());
+            int i = 0;
+            while (i < SIZES.length - 1 && SIZES[i] < p.scale - 0.01) i++;
+            p.scale = SIZES[(i + 1) % SIZES.length];
+            Panels.save();
+        }
+
+        // right button: item line = stop counting it, title line = hide/show the panel
+        if (Mouse.right && !prevRight && hovered != null) {
+            Box box = boxes.get(hovered[0]);
+            String item = box.lines().get(hovered[1]).item();
+            Config cfg = Config.get();
+            if (item != null) {
+                if (!cfg.ignoredItems.contains(item)) {
+                    cfg.ignoredItems.add(item);
+                    Config.save();
+                    Tracker.say("§6[Profit] §7Hidden §f" + item + "§7 (not counted). Undo in Settings → Hidden items.");
+                }
+            } else if (hovered[1] == 0) {
+                Panels.Pos p = Panels.get(box.key());
+                p.hidden = !p.hidden;
+                Panels.save();
+                Tracker.say("§6[Profit] §f" + Panels.title(box.id()) + " §7" + (p.hidden ? "hidden (/profit gui to show it again)" : "shown"));
             }
         }
 
         prevLeft = Mouse.left;
         prevRight = Mouse.right;
-        return dragging != null ? null : hovered;
+        prevMiddle = Mouse.middle;
+        return dragging != null && moved ? null : hovered;
     }
 
     static void reset() {
-        if (dragging != null) Config.save();
+        if (dragging != null) Panels.save();
         dragging = null;
-        prevLeft = prevRight = false;
+        prevLeft = prevRight = prevMiddle = false;
     }
 
     private HudEditor() {}

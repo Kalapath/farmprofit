@@ -43,34 +43,36 @@ public final class Hud {
         Session s = Tracker.sessions.get(type);
 
         if (s == null) {
-            out.add(title(type));
+            if (Config.get().hudShowTitle) out.add(title(type));
             out.add(switch (type) {
                 case Tracker.MINING -> "§7Start mining to begin tracking";
                 case Tracker.FORAGING -> "§7Start chopping to begin tracking";
                 case Tracker.DUNGEONS, Tracker.KUUDRA -> "§7Start a run to begin tracking";
                 default -> "§7Break a crop to start tracking";
             });
-            String tip = Suggest.hudLine(null, type);
+            boolean together = !Config.get().separatePanels;
+            String tip = together ? Suggest.hudLine(null, type) : null;
             if (tip != null) out.add(tip);
-            if (details && Tracker.FARMING.equals(type)) { String c = Contests.hudLine(); if (c != null) out.add(c); }
+            if (together && details && Tracker.FARMING.equals(type)) { String c = Contests.hudLine(); if (c != null) out.add(c); }
             if (details) { String m = Election.hudLine(type); if (m != null) out.add(m); }
             if (details) addCommissions(out, type);
-            if (Tracker.DUNGEONS.equals(type)) Secrets.addHudLines(out);
+            if (together && Tracker.DUNGEONS.equals(type)) Secrets.addHudLines(out);
             return out;
         }
 
+        Config cfg = Config.get();
         long now = System.currentTimeMillis();
         String main = s.mainCrop();
-        out.add(title(type));
-        out.add("§7Time: §f" + Fmt.duration(s.durationMs(now)));
+        if (cfg.hudShowTitle) out.add(title(type));
+        if (cfg.hudShowTime) out.add("§7Time: §f" + Fmt.duration(s.durationMs(now)));
         if (details) addActivityLine(out, s, now);
-        if (s.isCombat()) addBossLine(out, s, now);
-        if (s.isDungeons() || s.isKuudra()) addRunLine(out, s, now);
-        if (s.isDiana()) out.add("§7Burrows: §e" + Fmt.num(s.burrows) + rate(s.burrows, s, now));
+        if (s.isCombat() && cfg.combatShowBosses) addBossLine(out, s, now);
+        if ((s.isDungeons() && cfg.dungShowRuns) || (s.isKuudra() && cfg.kuudraShowRuns)) addRunLine(out, s, now);
+        if (s.isDiana() && cfg.dianaShowBurrows) out.add("§7Burrows: §e" + Fmt.num(s.burrows) + rate(s.burrows, s, now));
         if (details) {
-            addStats(out, type, main);
+            if (statsOn(type)) addStats(out, type, main);
             addPowder(out, s, now);
-            if (s.isFarming() || Tracker.FARMING.equals(type)) { String c = Contests.hudLine(); if (c != null) out.add(c); }
+            if (!cfg.separatePanels && s.isFarming()) { String c = Contests.hudLine(); if (c != null) out.add(c); }
             String m = Election.hudLine(type);
             if (m != null) out.add(m);
         }
@@ -78,23 +80,53 @@ public final class Hud {
         if (!Prices.loaded()) out.add("§cLoading Bazaar prices...");
         out.add("§7Profit: §6" + Fmt.coins(s.value()) + " coins");
         if (s.coins > 0) out.add("§7Coins found: §6+" + Fmt.coins(s.coins));
-        addCostLines(out, s);
-        out.add("§7Profit/h: §6" + (s.durationMs(now) < 60_000 ? "§8wait 1 min" : Fmt.coins(s.perHour(now)) + "/h"));
-        if (Config.get().hudShowTotal) addTotalLine(out, type);
+        if (cfg.hudShowCosts) addCostLines(out, s);
+        if (cfg.hudShowRate) out.add("§7Profit/h: §6" + (s.durationMs(now) < 60_000 ? "§8wait 1 min" : Fmt.coins(s.perHour(now)) + "/h"));
+        if (cfg.hudShowTotal) addTotalLine(out, type);
 
-        String tip = Suggest.hudLine(s, type);
+        String tip = cfg.separatePanels ? null : Suggest.hudLine(s, type);
         if (tip != null) out.add(tip);
 
         if (details) addExtras(out, s);
-        addShards(out, s, 4);
-        addRareDrops(out, s, 4);
+        addShards(out, s, cfg.hudMaxShards);
+        addRareDrops(out, s, cfg.hudMaxRare);
 
-        addItems(out, s, type);
+        if (cfg.hudShowItems) addItems(out, s, type);
 
         if (details) addCommissions(out, type);
-        if (s.isDungeons()) Secrets.addHudLines(out);
+        if (s.isDungeons() && !cfg.separatePanels) Secrets.addHudLines(out);
 
-        if (s.paused(now)) out.add("§ePaused §7- resets in " + Fmt.clock(Tracker.resetMs() - Tracker.idleMs(s)));
+        if (s.paused(now) && cfg.hudShowCountdown) out.add("§ePaused §7- resets in " + Fmt.clock(Tracker.resetMs() - Tracker.idleMs(s)));
+        return out;
+    }
+
+    // ================= separate panels =================
+
+    /** Lines for one panel id (see Panels.ALL). Empty = nothing to show right now. */
+    public static Lines panel(String id) {
+        Config cfg = Config.get();
+        Lines out = new Lines();
+        String type = Tracker.shownType();
+        switch (id) {
+            case "main" -> { return lines(); }
+            case "bazaar" -> { return Bazaar.hudLines(); }
+            case "secrets" -> {
+                if (cfg.separatePanels && Tracker.DUNGEONS.equals(Tracker.area)) Secrets.addHudLines(out);
+            }
+            case "contest" -> {
+                if (cfg.separatePanels && cfg.showContests && Tracker.FARMING.equals(type)) {
+                    String c = Contests.hudLine();
+                    if (c != null) out.add(c);
+                }
+            }
+            case "suggest" -> {
+                if (cfg.separatePanels && type != null) {
+                    String t = Suggest.hudLine(Tracker.sessions.get(type), type);
+                    if (t != null) out.add(t);
+                }
+            }
+            default -> { }
+        }
         return out;
     }
 
@@ -150,18 +182,32 @@ public final class Hud {
 
     // ================= pieces =================
 
+    /** Is the stats block (fortune, speed...) switched on for this activity? */
+    private static boolean statsOn(String type) {
+        Config c = Config.get();
+        if (Tracker.isMiningType(type)) return c.mineShowStats;
+        return switch (type) {
+            case Tracker.FARMING -> c.farmShowFortune;
+            case Tracker.FORAGING -> c.forShowStats;
+            case Tracker.FISHING -> c.fishShowStats;
+            case Tracker.COMBAT, Tracker.DUNGEONS, Tracker.KUUDRA, Tracker.DIANA -> c.combatShowMagicFind;
+            default -> true;
+        };
+    }
+
     private static void addActivityLine(Lines out, Session s, long now) {
+        Config c = Config.get();
         String bps = String.format(Locale.US, "%.1f", s.breaksPerSecond(now)) + " BPS)";
         if (s.isMining()) out.add("§7Mining: §a" + s.mainCrop() + " §8(" + Fmt.num(s.totalBreaks()) + " blocks, " + bps);
         else if (s.isForaging()) {
             out.add("§7Chopping: §a" + s.mainCrop() + " §8(" + Fmt.num(s.totalBreaks()) + " logs, " + bps);
-            if (s.treeGifts > 0) {
+            if (s.treeGifts > 0 && c.forShowTrees) {
                 double min = s.durationMs(now) / 60_000.0;
                 out.add("§7Trees: §a" + Fmt.num(s.treeGifts) + " gifts" + (min < 1 ? "" : String.format(Locale.US, " §8(%.1f/min)", s.treeGifts / min)));
             }
         } else if (s.isFishing()) {
-            if (s.location != null) out.add("§7Location: §b" + s.location);
-        } else if (s.isFarming()) {
+            if (s.location != null && c.fishShowLocation) out.add("§7Location: §b" + s.location);
+        } else if (s.isFarming() && c.farmShowBps) {
             out.add("§7Farming: §a" + s.mainCrop() + " §8(" + Fmt.num(s.totalBreaks()) + " broken, " + bps);
         }
     }
@@ -178,7 +224,7 @@ public final class Hud {
         double h = s.hours(now);
         long avg = s.durationMs(now) / s.runs;
         out.add("§7Runs: §f" + s.runs + " §8(avg " + Fmt.duration(avg) + (h > 0 ? String.format(Locale.US, ", %.1f/h", s.runs / h) : "") + ")");
-        if (s.lastScore != null) out.add("§7Last score: §f" + s.lastScore);
+        if (s.lastScore != null && Config.get().dungShowScore) out.add("§7Last score: §f" + s.lastScore);
         if (s.runs > 0) out.add("§7Profit/run: §6" + Fmt.coins(s.value() / s.runs));
     }
 
@@ -204,6 +250,7 @@ public final class Hud {
 
     private static void addPowder(Lines out, Session s, long now) {
         if (s.powder == null || (!s.isMining() && !s.isForaging())) return;
+        if ((s.isMining() && !Config.get().mineShowPowder) || (s.isForaging() && !Config.get().forShowWhispers)) return;
         double h = s.hours(now);
         List<String> kinds = new ArrayList<>();
         if (s.isForaging()) kinds.add("Forest Whispers");
@@ -223,7 +270,8 @@ public final class Hud {
     }
 
     private static void addExtras(Lines out, Session s) {
-        if (s.isFarming() && s.totalPests() > 0) {
+        Config c = Config.get();
+        if (s.isFarming() && s.totalPests() > 0 && c.farmShowPests) {
             var pests = new ArrayList<>(s.pests.entrySet());
             pests.sort((a, b) -> b.getValue() - a.getValue());
             StringBuilder sb = new StringBuilder("§7Pests: §c" + s.totalPests() + " killed §8(");
@@ -233,20 +281,20 @@ public final class Hud {
             }
             out.add(sb.append(pests.size() > 3 ? ", ...)" : ")").toString());
         }
-        if (s.isMining() && s.pristine > 0) out.add("§7Pristine procs: §d" + s.pristine);
-        if (s.isFishing() && s.trophyFish > 0) {
+        if (s.isMining() && s.pristine > 0 && c.mineShowPristine) out.add("§7Pristine procs: §d" + s.pristine);
+        if (s.isFishing() && s.trophyFish > 0 && c.fishShowTrophies) {
             var tr = new ArrayList<>(s.trophies.entrySet());
             tr.sort((a, b) -> b.getValue() - a.getValue());
             StringBuilder sb = new StringBuilder("§7Trophy fish: §6" + s.trophyFish + " §8(");
             for (int i = 0; i < Math.min(3, tr.size()); i++) sb.append(i > 0 ? ", " : "").append(tr.get(i).getKey()).append(" ").append(tr.get(i).getValue());
             out.add(sb.append(")").toString());
         }
-        if (s.isFarming() && s.visitors > 0) out.add("§7Visitors: §a" + s.visitors + " accepted");
-        if (s.isMining() && s.breaks.size() > 1) {
+        if (s.isFarming() && s.visitors > 0 && c.farmShowVisitors) out.add("§7Visitors: §a" + s.visitors + " accepted");
+        if (s.isMining() && s.breaks.size() > 1 && c.mineShowBlocks) {
             out.add("§7Blocks:");
             var breaks = new ArrayList<>(s.breaks.entrySet());
             breaks.sort((a, b) -> b.getValue() - a.getValue());
-            for (int i = 0; i < Math.min(4, breaks.size()); i++) {
+            for (int i = 0; i < Math.min(c.mineBlocksShown, breaks.size()); i++) {
                 out.add(" §f" + Fmt.num(breaks.get(i).getValue()) + " §d" + breaks.get(i).getKey());
             }
         }
@@ -261,7 +309,7 @@ public final class Hud {
         var shards = new ArrayList<>(s.shards.entrySet());
         shards.removeIf(e -> Session.ignored(e.getKey()));
         shards.sort((a, b) -> Double.compare(b.getValue() * Prices.price(b.getKey()), a.getValue() * Prices.price(a.getKey())));
-        if (shards.isEmpty()) return;
+        if (shards.isEmpty() || max <= 0) return;
         double value = s.shardValue();
         out.add("§7Shards: §b" + s.totalShards() + " §8(" + (value == 0 ? "?" : Fmt.coins(value)) + ")");
         for (int i = 0; i < Math.min(max, shards.size()); i++) out.item(shardLine(shards.get(i)), shards.get(i).getKey());
@@ -277,7 +325,7 @@ public final class Hud {
         if (!Config.get().showRareDrops || s.rareDrops == null || s.rareDrops.isEmpty()) return;
         var drops = new ArrayList<>(s.rareDrops.entrySet());
         drops.removeIf(e -> Session.ignored(e.getKey()));
-        if (drops.isEmpty()) return;
+        if (drops.isEmpty() || max <= 0) return;
         drops.sort((a, b) -> Double.compare(b.getValue() * Prices.price(b.getKey()), a.getValue() * Prices.price(a.getKey())));
         int total = 0;
         for (var d : drops) total += d.getValue();

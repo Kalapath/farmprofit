@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public final class Fmt {
     public static String coins(double v) {
+        if ("full".equals(Config.get().numberFormat)) return String.format(Locale.US, "%,.0f", v);
         double a = Math.abs(v);
         if (a >= 1e9) return String.format(Locale.US, "%.2fB", v / 1e9);
         if (a >= 1e6) return String.format(Locale.US, "%.2fM", v / 1e6);

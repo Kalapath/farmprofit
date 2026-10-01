@@ -20,4 +20,6 @@ public @interface Setting {
     String[] options() default {};
     double min() default -Double.MAX_VALUE;
     double max() default Double.MAX_VALUE;
+    /** Kept in config.json but not shown in the menu (e.g. replaced by the HUD editor). */
+    boolean hidden() default false;
 }

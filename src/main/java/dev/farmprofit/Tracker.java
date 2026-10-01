@@ -124,7 +124,12 @@ public final class Tracker {
 
     // ---------- sessions ----------
 
+    /** The HUD you're looking at: switches to whatever you just did, or to the island you just arrived on. */
+    private static String showing;
+    private static String lastArea = "";
+
     private static Session activity(String type) {
+        showing = type;
         long now = System.currentTimeMillis();
         Session s = sessions.computeIfAbsent(type, t -> new Session(t, now));
         s.touch(now);
@@ -147,9 +152,17 @@ public final class Tracker {
 
     public static Session farmingSession() { return activity(FARMING); }
 
-    public static void onAttack() {
-        if (recent(FISHING, SHOWN_WINDOW_MS)) { activity(FISHING); return; }        // killing sea creatures
-        if (recent(DIANA, SHOWN_WINDOW_MS)) { activity(DIANA); return; }            // mythological mobs
+    /** Things you can hit that aren't fights: NPCs, players, decorations. */
+    private static final Set<String> NOT_MOBS = Set.of("player", "armor_stand", "villager", "wandering_trader",
+            "item_frame", "glow_item_frame", "painting", "interaction", "text_display", "item_display", "block_display",
+            "boat", "minecart", "chest_boat", "end_crystal", "leash_knot", "mannequin");
+    private static final java.util.ArrayDeque<Long> combatHits = new java.util.ArrayDeque<>();
+
+    public static void onAttack(String entityType, boolean invisible) {
+        if (NOT_MOBS.contains(entityType)) return;
+        Config c = Config.get();
+        if (recent(FISHING, c.fishingActiveSeconds * 1000L)) { activity(FISHING); return; }   // sea creatures
+        if (recent(DIANA, SHOWN_WINDOW_MS)) { activity(DIANA); return; }                        // mythological mobs
         if (KUUDRA.equals(area)) { activity(KUUDRA); return; }
         if (MINING.equals(area) || FORAGING.equals(area)) {
             if (sessions.containsKey(area)) activity(area);
@@ -160,7 +173,13 @@ public final class Tracker {
             return;
         }
         if (DUNGEONS.equals(area)) { onDungeonAction(); return; }
-        activity(COMBAT);
+        // Combat: keep a running session going, but only start a new one after real fighting
+        if (sessions.containsKey(COMBAT)) { activity(COMBAT); return; }
+        if (c.combatNeedsSlayer) return;
+        long now = System.currentTimeMillis();
+        combatHits.addLast(now);
+        while (!combatHits.isEmpty() && now - combatHits.peekFirst() > 30_000) combatHits.removeFirst();
+        if (combatHits.size() >= Math.max(1, c.combatStartHits)) { combatHits.clear(); activity(COMBAT); }
     }
 
     public static void onDungeonAction() {
@@ -168,12 +187,21 @@ public final class Tracker {
         if (s.floor == null && dungeonFloor != null) s.floor = dungeonFloor;
     }
 
-    /** Which HUD to show: whatever you did in the last minute, otherwise the island you're on. */
+    /** Which HUD to show: what you did last; arriving somewhere new switches to that island's HUD. */
     public static String shownType() {
-        Session recent = mostRecent();
-        if (recent != null && idleMs(recent) < SHOWN_WINDOW_MS) return recent.type;
+        if (showing != null && (sessions.containsKey(showing) || showing.equals(area))) return showing;
         if (area != null) return area;
+        Session recent = mostRecent();
         return recent != null ? recent.type : null;
+    }
+
+    /** Called after the location is read: a new island switches the HUD right away. */
+    private static void onAreaChecked() {
+        String now = area == null ? "" : area;
+        if (!now.equals(lastArea)) {
+            lastArea = now;
+            if (area != null && Config.get().switchHudOnArrival) showing = area;
+        }
     }
 
     public static Session shown() {
@@ -199,7 +227,7 @@ public final class Tracker {
         s.finish();
         Totals.add(s);
         History.add(s);
-        if (announce) {
+        if (announce && Config.get().announceSessionEnd) {
             say("§6§l[" + s.type + "] §7Session saved: §f" + Fmt.duration(s.durationMs(0)) + " §7- §a" + s.mainCrop);
             say("  §7Profit §6" + Fmt.coins(s.profit) + " §7(§6" + Fmt.coins(s.profitPerHour) + "/h§7)"
                     + (Hud.bestItem(s) != null ? "  §7Best: " + Hud.bestItem(s) : ""));
@@ -214,6 +242,9 @@ public final class Tracker {
 
     public static void tick(Minecraft mc) {
         SettingsScreen.tick(mc);
+        GuiEditor.tick(mc);
+        SetupScreen.tick(mc);
+        UpdateCheck.tick();
         Prices.tick();
         if (Prices.bazaarUpdated) {
             Prices.bazaarUpdated = false;
@@ -397,9 +428,14 @@ public final class Tracker {
         areaName = a != null ? a : HypixelLocation.map;
         area = null;
         String fromApi = HypixelLocation.activity();
+        String apiMap = HypixelLocation.map;
+        if (apiMap != null) {
+            for (String f : Config.get().miningAreas) if (apiMap.contains(f)) fromApi = MINING;
+            for (String f : Config.get().foragingAreas) if (apiMap.contains(f)) fromApi = FORAGING;
+        }
         if (fromApi != null) {
             area = fromApi.isEmpty() ? null : fromApi;
-            if (!fromApi.isEmpty() || a == null) { readPowder(); return; }
+            if (!fromApi.isEmpty() || a == null) { onAreaChecked(); readPowder(); return; }
         }
         if (a != null) {
             for (String f : Config.get().miningAreas) if (a.contains(f)) area = MINING;
@@ -409,6 +445,7 @@ public final class Tracker {
             if (a.contains("Kuudra")) area = KUUDRA;
         }
         if (tab.containsKey("Crypts") || tab.containsKey("Secrets Found")) area = DUNGEONS;
+        onAreaChecked();
         readPowder();
     }
 
@@ -552,7 +589,7 @@ public final class Tracker {
             Debug.saw("catch");
             if (s == null) return;
             Matcher coins = COINS.matcher(fc.group(1).trim());
-            if (coins.matches()) s.coins += Long.parseLong(coins.group(1).replace(",", ""));
+            if (coins.matches()) { if (Config.get().fishCountCoins) s.coins += Long.parseLong(coins.group(1).replace(",", "")); }
             else addRare(s, fc.group(1));
             return;
         }

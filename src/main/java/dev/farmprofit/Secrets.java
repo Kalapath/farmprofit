@@ -26,7 +26,7 @@ public final class Secrets {
     private static final String[] SECRET_ITEMS = {"Decoy", "Inflatable Jerry", "Spirit Leap", "Training Weight",
             "Defuse Kit", "Trap", "Treasure Talisman", "Dungeon Chest Key", "Healing VIII", "Revive Stone",
             "Architect's First Draft", "Secret Dye", "Candycomb", "Superboom TNT"};
-    private static final int RADIUS = 14, HEIGHT = 7;
+    private static final int HEIGHT = 7;
 
     public record Spot(String kind, double x, double y, double z, String color) {}
 
@@ -38,6 +38,7 @@ public final class Secrets {
 
     /** Action bar text, e.g. "... 3/7 Secrets ...". */
     public static void onActionBar(String text) {
+        if (Tracker.DUNGEONS.equals(Tracker.area)) Debug.lastActionBar = text;
         Matcher m = ROOM.matcher(text);
         if (m.find()) {
             roomFound = Integer.parseInt(m.group(1));
@@ -56,17 +57,19 @@ public final class Secrets {
         }
         if (!Config.get().secretFinder || ++tick % 10 != 0) return;   // twice a second
 
+        Config c = Config.get();
+        int radius = Math.max(4, Math.min(32, c.secretRadius));
         List<Spot> found = new ArrayList<>();
         BlockPos me = mc.player.blockPosition();
-        for (int dx = -RADIUS; dx <= RADIUS; dx++) {
-            for (int dz = -RADIUS; dz <= RADIUS; dz++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
                 for (int dy = -HEIGHT; dy <= HEIGHT; dy++) {
                     BlockPos p = new BlockPos(me.getX() + dx, me.getY() + dy, me.getZ() + dz);
                     BlockState s = mc.level.getBlockState(p);
                     String kind = null, color = "§e";
-                    if (s.is(Blocks.CHEST) || s.is(Blocks.TRAPPED_CHEST)) kind = "Chest";
-                    else if (s.is(Blocks.LEVER)) { kind = "Lever"; color = "§6"; }
-                    else if (s.is(Blocks.PLAYER_HEAD) || s.is(Blocks.PLAYER_WALL_HEAD)) { kind = "Essence"; color = "§d"; }
+                    if (c.secretChests && (s.is(Blocks.CHEST) || s.is(Blocks.TRAPPED_CHEST))) kind = "Chest";
+                    else if (c.secretLevers && s.is(Blocks.LEVER)) { kind = "Lever"; color = "§6"; }
+                    else if (c.secretEssence && (s.is(Blocks.PLAYER_HEAD) || s.is(Blocks.PLAYER_WALL_HEAD))) { kind = "Essence"; color = "§d"; }
                     if (kind != null && !used.contains(p.asLong())) found.add(new Spot(kind, p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5, color));
                 }
             }
@@ -77,8 +80,8 @@ public final class Secrets {
                 if (!(o instanceof Entity e) || e == mc.player) continue;
                 if (Math.abs(e.getX() - mc.player.getX()) > 24 || Math.abs(e.getZ() - mc.player.getZ()) > 24) continue;
                 String type = BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath();
-                if (type.equals("bat") && !e.isInvisible()) found.add(new Spot("Bat", e.getX(), e.getY(), e.getZ(), "§c"));
-                else if (type.equals("item")) {
+                if (c.secretBats && type.equals("bat") && !e.isInvisible()) found.add(new Spot("Bat", e.getX(), e.getY(), e.getZ(), "§c"));
+                else if (c.secretItems && type.equals("item")) {
                     Object stack = Reflect.call(e, "getItem");
                     if (stack instanceof ItemStack is) {
                         String name = Tracker.strip(is.getHoverName().getString());
@@ -119,7 +122,7 @@ public final class Secrets {
                 + " §8(" + (roomTotal - roomFound) + " left)") : "";
         out.add("§5§lSecrets" + room);
         if (spots.isEmpty()) { out.add(" §8nothing nearby"); return; }
-        for (int i = 0; i < Math.min(5, spots.size()); i++) {
+        for (int i = 0; i < Math.min(Config.get().secretsShown, spots.size()); i++) {
             Spot s = spots.get(i);
             double dy = s.y - mc.player.getY();
             String level = dy > 2.5 ? " §7▲" : dy < -2.5 ? " §7▼" : "";

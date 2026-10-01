@@ -181,7 +181,15 @@ public final class Items {
     public static String blockFor(String blockPath, String area) {
         if (Tracker.FORAGING.equals(area)) {
             String extra = Config.get().extraLogBlocks.get(blockPath);
-            return extra != null ? extra : LOG_BLOCKS.get(blockPath);
+            if (extra != null) return extra;
+            String known = LOG_BLOCKS.get(blockPath);
+            if (known != null) return known;
+            if (Config.get().countAnyLog && (blockPath.endsWith("_log") || blockPath.endsWith("_wood")
+                    || blockPath.endsWith("_stem") || blockPath.endsWith("_hyphae"))) {
+                String n = blockPath.replace("stripped_", "").replaceAll("_(log|wood|stem|hyphae)$", "").replace('_', ' ');
+                return Character.toUpperCase(n.charAt(0)) + n.substring(1);
+            }
+            return null;
         }
         return oreFor(blockPath, area);
     }

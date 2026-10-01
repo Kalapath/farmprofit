@@ -5,7 +5,7 @@ import net.minecraft.client.Minecraft;
 /** Mouse position (in GUI pixels) and button state, read safely at runtime. */
 final class Mouse {
     static double x, y;
-    static boolean left, right;
+    static boolean left, right, middle;
 
     static boolean update(Minecraft mc) {
         Object mh = Reflect.field(mc, "mouseHandler");
@@ -21,6 +21,7 @@ final class Mouse {
         y = py * gh / sh;
         left = Reflect.call(mh, "isLeftPressed") == Boolean.TRUE;
         right = Reflect.call(mh, "isRightPressed") == Boolean.TRUE;
+        middle = Reflect.call(mh, "isMiddlePressed") == Boolean.TRUE;
         return true;
     }
 

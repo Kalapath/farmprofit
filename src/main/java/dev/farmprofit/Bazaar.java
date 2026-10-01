@@ -98,13 +98,13 @@ public final class Bazaar {
         if ((m = FILLED_BUY.matcher(msg)).find()) {
             Order o = find("buy", m.group(2).trim(), x -> !x.filled);
             if (o != null) o.filled = true;
-            ping();
+            if (Config.get().bzFillSound) ping();
             save(); return true;
         }
         if ((m = FILLED_SELL.matcher(msg)).find()) {
             Order o = find("sell", m.group(2).trim(), x -> !x.filled);
             if (o != null) o.filled = true;
-            ping();
+            if (Config.get().bzFillSound) ping();
             save(); return true;
         }
         if ((m = CLAIM_BUY.matcher(msg)).find()) {
@@ -352,11 +352,12 @@ public final class Bazaar {
         out.add("§6§lBazaar §7" + orders.size() + " order" + (orders.size() > 1 ? "s" : "") + " §8(" + Fmt.coins(tied) + ")");
         int shown = 0;
         for (Order o : orders) {
-            if (shown++ >= 6) { out.add("§8 ...and " + (orders.size() - 6) + " more (/flips orders)"); break; }
+            int max = Config.get().bzHudMaxOrders;
+            if (shown++ >= max) { out.add("§8 ...and " + (orders.size() - max) + " more (/flips orders)"); break; }
             out.add(orderLine(o));
         }
         double today = profitSince(startOfDay());
-        if (today != 0) out.add("§7Flip profit today: " + (today >= 0 ? "§6+" : "§c") + Fmt.coins(today));
+        if (today != 0 && Config.get().bzShowToday) out.add("§7Flip profit today: " + (today >= 0 ? "§6+" : "§c") + Fmt.coins(today));
         return out;
     }
 

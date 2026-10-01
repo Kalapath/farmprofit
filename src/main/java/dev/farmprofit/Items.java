@@ -76,6 +76,16 @@ public final class Items {
         id("Fig Log", "FIG_LOG"); id("Enchanted Fig Log", "ENCHANTED_FIG_LOG");
         id("Mangrove Log", "MANGROVE_LOG"); id("Enchanted Mangrove Log", "ENCHANTED_MANGROVE_LOG");
         id("Deep Root", "DEEP_ROOT"); id("Lushlilac", "LUSHLILAC"); id("Sea Lumies", "SEA_LUMIES");
+        // ===== FISHING ITEMS =====
+        id("Raw Salmon", "RAW_FISH:1"); id("Clownfish", "RAW_FISH:2"); id("Pufferfish", "RAW_FISH:3");
+        id("Enchanted Raw Salmon", "ENCHANTED_RAW_SALMON"); id("Enchanted Clownfish", "ENCHANTED_CLOWNFISH");
+        id("Enchanted Pufferfish", "ENCHANTED_PUFFERFISH"); id("Ink Sac", "INK_SACK");
+        id("Lily Pad", "WATER_LILY"); id("Enchanted Lily Pad", "ENCHANTED_WATER_LILY"); id("Clay", "CLAY_BALL");
+        id("Magmafish", "MAGMA_FISH"); id("Silver Magmafish", "MAGMA_FISH_SILVER");
+        id("Gold Magmafish", "MAGMA_FISH_GOLD"); id("Diamond Magmafish", "MAGMA_FISH_DIAMOND");
+        // ===== COMBAT ITEMS (most others are found automatically by name) =====
+        id("Gunpowder", "SULPHUR"); id("Slimeball", "SLIME_BALL");
+
         id("Starfall", "STARFALL"); id("Treasurite", "TREASURITE");
         for (String gem : new String[]{"Ruby", "Amber", "Sapphire", "Jade", "Amethyst", "Topaz", "Jasper", "Opal",
                 "Aquamarine", "Citrine", "Peridot", "Onyx"}) {
@@ -131,14 +141,22 @@ public final class Items {
 
     public static String idFor(String itemName) {
         String extra = Config.get().extraItems.get(itemName);
-        return extra != null ? extra : NAME_TO_ID.get(itemName);
+        if (extra != null) return extra;
+        String learned = ItemIds.LEARNED.get(itemName);
+        return learned != null ? learned : NAME_TO_ID.get(itemName);
     }
 
     private static final Pattern BOOK = Pattern.compile("^Enchanted Book \\((.+?) ([IVX]+)\\)$");
     private static final String[] ROMAN = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
 
     /** Best guess at a SkyBlock item ID from its name, e.g. "Overclocker 3000" -> OVERCLOCKER_3000. */
+    private static final Map<String, String> GUESS_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static String guessId(String name) {
+        return GUESS_CACHE.computeIfAbsent(name, Items::computeGuess);
+    }
+
+    private static String computeGuess(String name) {
         Matcher b = BOOK.matcher(name);
         if (b.matches()) {
             int level = 0;
@@ -171,7 +189,7 @@ public final class Items {
     public static String oreFor(String blockPath, String area) {
         String name = Config.get().extraOreBlocks.get(blockPath);
         if (name == null) name = ORE_BLOCKS.get(blockPath);
-        if ("Hard Stone".equals(name) && Tracker.DWARVEN.equals(area)) return "Stone";
+        if ("Hard Stone".equals(name) && Tracker.areaName != null && Tracker.areaName.contains("Dwarven")) return "Stone";
         return name;
     }
 

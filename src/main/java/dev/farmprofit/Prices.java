@@ -14,6 +14,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Bazaar prices from Hypixel's public API, plus lowest-BIN prices for auction items. */
 public final class Prices {
     private static final String BAZAAR_URL = "https://api.hypixel.net/v2/skyblock/bazaar";
+    private static final String ITEMS_URL = "https://api.hypixel.net/v2/resources/skyblock/items";
+    private static final Map<String, Double> NPC = new ConcurrentHashMap<>();
+    /** Official item name -> ID, from Hypixel's item list. */
+    private static final Map<String, String> NAME_IDS = new ConcurrentHashMap<>();
+    private static volatile boolean itemsLoaded;
+    /** id -> {topBuyOrder, lowestSellOffer, sellMovingWeek, buyMovingWeek, buyOrders, sellOrders} */
+    public static final Map<String, double[]> BOOK = new ConcurrentHashMap<>();
+    public static final Map<String, String> ID_NAMES = new ConcurrentHashMap<>();
+    /** Set when fresh bazaar data arrives; the bazaar tracker picks it up on the game thread. */
+    public static volatile boolean bazaarUpdated;
+    private static volatile long lastBazaarFetch;
     private static final long REFRESH_MS = 10 * 60 * 1000;
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build();
@@ -22,12 +33,20 @@ public final class Prices {
     private static volatile long lastFetch;
 
     public static void tick() {
-        if (System.currentTimeMillis() - lastFetch > REFRESH_MS) refresh();
+        long now = System.currentTimeMillis();
+        if (now - lastFetch > REFRESH_MS) refresh();
+        // refresh the bazaar much more often while you have orders out
+        else if (Bazaar.hasOpenOrders() && now - lastBazaarFetch > Config.get().bzRefreshSeconds * 1000L) {
+            lastBazaarFetch = now;
+            fetch(BAZAAR_URL, Prices::parseBazaar);
+        }
     }
 
     public static void refresh() {
         lastFetch = System.currentTimeMillis();
+        lastBazaarFetch = lastFetch;
         fetch(BAZAAR_URL, Prices::parseBazaar);
+        if (!itemsLoaded) fetch(ITEMS_URL, Prices::parseItems);
         String bin = Config.get().lowestBinUrl;
         if (bin != null && !bin.isBlank()) fetch(bin, Prices::parseBins);
     }
@@ -51,7 +70,56 @@ public final class Prices {
             JsonObject qs = e.getValue().getAsJsonObject().getAsJsonObject("quick_status");
             if (qs == null) continue;
             BAZAAR.put(e.getKey(), new double[]{qs.get("sellPrice").getAsDouble(), qs.get("buyPrice").getAsDouble()});
+            JsonObject p = e.getValue().getAsJsonObject();
+            double topBuy = top(p, "sell_summary"), lowSell = top(p, "buy_summary");   // Hypixel's naming is swapped
+            BOOK.put(e.getKey(), new double[]{topBuy, lowSell, num(qs, "sellMovingWeek"), num(qs, "buyMovingWeek"),
+                    num(qs, "buyOrders"), num(qs, "sellOrders")});
         }
+        bazaarUpdated = true;
+    }
+
+    private static double top(JsonObject product, String key) {
+        try {
+            var arr = product.getAsJsonArray(key);
+            return arr == null || arr.isEmpty() ? -1 : arr.get(0).getAsJsonObject().get("pricePerUnit").getAsDouble();
+        } catch (Exception e) { return -1; }
+    }
+
+    private static double num(JsonObject o, String key) {
+        try { return o.has(key) ? o.get(key).getAsDouble() : 0; } catch (Exception e) { return 0; }
+    }
+
+    public static String nameOf(String id) {
+        String n = ID_NAMES.get(id);
+        if (n != null) return n;
+        String s = id.replaceFirst("^ENCHANTMENT_", "").toLowerCase().replace('_', ' ');
+        StringBuilder b = new StringBuilder();
+        for (String w : s.split(" ")) if (!w.isEmpty()) b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
+        return b.toString().trim();
+    }
+
+    private static void parseItems(String body) {
+        JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+        if (!root.has("items")) return;
+        for (var el : root.getAsJsonArray("items")) {
+            JsonObject it = el.getAsJsonObject();
+            if (!it.has("id")) continue;
+            String id = it.get("id").getAsString();
+            if (it.has("name")) {
+                String name = Tracker.strip(it.get("name").getAsString());
+                NAME_IDS.putIfAbsent(name, id);
+                ID_NAMES.putIfAbsent(id, name);
+            }
+            if (it.has("npc_sell_price")) NPC.put(id, it.get("npc_sell_price").getAsDouble());
+        }
+        itemsLoaded = true;
+    }
+
+    public static String idFor(String itemName) {
+        String id = Items.idFor(itemName);
+        if (id != null) return id;
+        id = NAME_IDS.get(itemName);
+        return id != null ? id : Items.guessId(itemName);
     }
 
     private static void parseBins(String body) {
@@ -63,10 +131,16 @@ public final class Prices {
 
     public static boolean loaded() { return !BAZAAR.isEmpty(); }
 
+    public static int bazaarCount() { return BAZAAR.size(); }
+    public static int itemCount() { return NAME_IDS.size(); }
+    public static int binCount() { return BINS.size(); }
+    public static double npcPrice(String id) { return NPC.getOrDefault(id, 0.0); }
+    public static double binPrice(String id) { return BINS.getOrDefault(id, 0.0); }
+    /** {instasell, instabuy} before tax, or null. */
+    public static double[] bazaarRaw(String id) { return BAZAAR.get(id); }
+
     public static double price(String itemName) {
-        String id = Items.idFor(itemName);
-        if (id == null) id = Items.guessId(itemName);
-        double v = priceForId(id);
+        double v = priceForId(idFor(itemName));
         if (v > 0 || !itemName.endsWith(" Shard")) return v;
         for (String cand : shardIds(itemName)) {
             v = priceForId(cand);
@@ -75,11 +149,25 @@ public final class Prices {
         return 0;
     }
 
+    public static double priceOfId(String id) { return priceForId(id); }
+
     private static double priceForId(String id) {
+        String mode = Config.get().priceMode == null ? "best" : Config.get().priceMode.toLowerCase();
         double[] p = BAZAAR.get(id);
-        if (p != null) return "sellorder".equalsIgnoreCase(Config.get().priceMode) ? p[1] : p[0];
+        double npc = NPC.getOrDefault(id, 0.0);
+        if (p != null) {
+            double keep = 1 - Config.get().bzTax / 100.0;     // selling on the Bazaar costs tax
+            double insta = p[0] * keep, offer = p[1] * keep;
+            return switch (mode) {
+                case "sellorder" -> offer;
+                case "npc" -> npc > 0 ? npc : insta;
+                case "best" -> Math.max(insta, npc);
+                default -> insta;
+            };
+        }
         Double bin = BINS.get(id);
-        return bin == null ? 0 : bin;
+        if (bin != null && !"npc".equals(mode)) return Math.max(bin, "best".equals(mode) ? npc : 0);
+        return npc;
     }
 
     /** Possible Bazaar IDs for a shard, e.g. "Sparrow Shard" -> SHARD_SPARROW. */
@@ -90,6 +178,7 @@ public final class Prices {
 
     /** True if Bazaar/BIN data knows this shard (used to clean up names read from chat). */
     public static boolean knowsShard(String shardName) {
+        if (NAME_IDS.containsKey(shardName)) return true;
         for (String cand : shardIds(shardName)) if (BAZAAR.containsKey(cand) || BINS.containsKey(cand)) return true;
         return false;
     }

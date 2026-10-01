@@ -1,64 +1,130 @@
-# SkyBlock Profit Counter – Farming & Mining (Hypixel SkyBlock, Fabric 26.1.2)
+# SkyBlock Profit Counter (Hypixel SkyBlock, Fabric 26.1.2)
 
-## What it shows (HUD, top-left)
-- How long you've been farming
-- What you're farming (the crop you've broken most) + blocks per second
-- Your farming fortune (read from the tab list)
-- Profit so far and estimated profit per hour (live Bazaar prices)
-- Every item you've farmed and how much it's worth
-- A countdown when you're idle. After 15 minutes with no crop broken / no pest
-  hit or vacuumed, the session ends and is saved to the history log.
+Tracks profit for **farming, mining, foraging, fishing and combat/slayers**, each with its own HUD.
+The HUD automatically shows whatever you did in the last minute (or the island you're on).
+Every session resets after 15 minutes of no activity and is saved to a history log.
 
-## Mining (v1.1)
-A separate HUD appears automatically in each mining area:
-- **Dwarven Mines** (green): mining speed/fortune, ore & block & dwarven metal fortune, Mithril Powder gained + per hour, items mined, commissions.
-- **Crystal Hollows** (pink): mining speed/fortune, gemstone fortune, Gemstone + Mithril Powder, which gemstones/ores you've been mining, items, commissions.
-- **Glacite Mineshaft** (aqua): mining speed/fortune, gemstone fortune, Glacite Powder, blocks mined, items.
+## What counts as activity
+| HUD | Starts / stays alive when you... |
+|---|---|
+| Farming | break crops, kill pests, use a vacuum |
+| Mining | mine ores/gemstones in Dwarven Mines, Crystal Hollows, Glacite Mineshafts (one combined HUD) |
+| Foraging | chop logs on Galatea / The Park, get Tree Gifts |
+| Fishing | cast or reel a fishing rod, kill sea creatures |
+| Combat | hit mobs anywhere else, start a slayer quest, kill a slayer boss |
 
-Each area keeps its own session with its own 15-minute idle timer, so popping into a mineshaft and back
-doesn't reset your Dwarven Mines session. Finished mining sessions go into the same history log.
-
-For mining to work, Hypixel's tab list needs the **Info/Area** line (shows "Area: Dwarven Mines" etc.),
-the **Stats** widget (speed/fortune) and the **Powders** widget (powder tracking).
-Commissions show if the Commissions widget is enabled.
-
-`/miningprofit` works exactly like `/farmprofit` (both act on whatever HUD you're currently seeing).
-If a block isn't being counted, add it in the config under `extraOreBlocks`, e.g. `"clay": "Tungsten"`.
-
-## Foraging (v1.3)
-A green **♣ Foraging** HUD appears on foraging islands (default: Galatea and The Park; change with
-`foragingAreas` in the config). It shows time, which wood you're chopping (Fig, Mangrove, Oak, ...), logs and
-blocks per second, **Tree Gifts** and trees per minute (Galatea), Sweep / Foraging Fortune / Fig & Mangrove
-Fortune, **Forest Whispers** gained + per hour, profit, profit/h, items chopped, rare drops and the idle timer.
-`/foragingprofit` works like the other commands. Unknown log blocks can be added under `extraLogBlocks`.
-Turn on the Stats widget (Sweep, Foraging Fortune) and the widget showing Forest Whispers in the tab list.
-
-## Attribute shards (v1.4)
-Shards announced in chat (from Tree Gifts, hunting, traps, mob drops...) are counted and shown under **Shards**
-with their Bazaar value, and added to profit (they go to the Hunting Box, so they can't be counted twice).
-The Foraging HUD always shows the shard line; other HUDs show it once you get a shard (e.g. Pest Shards while farming).
-Fusing, syphoning, Bazaar and transfer messages are ignored. Toggle with `showShards` in the config.
-
-## Rare drops, pests & pristine (v1.2)
-- Every `RARE DROP!`, `VERY RARE DROP!`, `CRAZY RARE DROP!`, `PET DROP!`, `RARE CROP!` (etc.) message during a
-  session is logged under **Rare drops** on the HUD and in history, with its value.
-- Farming: pest kills are counted by type from the "You received ... for killing a ..." message.
-- Crystal Hollows / Mineshaft: Pristine procs are counted.
-- Rare drops are added to profit **unless** the same item was already counted through your inventory/sacks
-  (shown as "in items"), so nothing is counted twice.
-- Auction-house items are priced with lowest BIN from `lowestBinUrl` in the config; Bazaar items use the Bazaar.
-  Items with no price show "?". Pets usually show "?".
+## What's counted as profit
+- Items going into your inventory or sacks (anything stackable that has a Bazaar / lowest-BIN price)
+- Rare drops (RARE DROP!, PET DROP!, GOOD/GREAT/OUTSTANDING CATCH! ...) that weren't already counted as items
+- Attribute shards (they go to the Hunting Box)
+- Minus slayer quest costs, if you set `slayerQuestCost` in the config
 
 ## Commands
-| Command | What it does |
+`/profit` shows the HUD you're looking at. `/farmprofit`, `/miningprofit`, `/foragingprofit`, `/fishingprofit`
+and `/combatprofit` show that specific activity. All of them print **profit only** (time, profit, profit/h,
+shards, rare drops, every item).
+
+| Sub-command | What it does |
 |---|---|
-| `/farmprofit` | Show the current session in chat (full item list) |
-| `/farmprofit history [count]` | Show past sessions (default last 10) |
-| `/farmprofit reset` | End the current session now (it still goes to history) |
-| `/farmprofit hud` | Turn the HUD on/off |
-| `/farmprofit move <x> <y>` | Move the HUD |
-| `/farmprofit prices` | Refresh Bazaar prices now |
-| `/farmprofit reload` | Reload the config file |
+| `total` | Lifetime totals (all activities, or just that one) |
+| `copy` | Copy "Mining: 12.3M coins in 2h 10m (5.6M/h)" to your clipboard |
+| `ignore <item>` / `unignore <item>` | Stop / start counting an item (e.g. `/profit ignore Hay Bale`) |
+| `history [count]` | Past sessions (`/profit history` = all, `/miningprofit history` = mining only) |
+| `reset` | End that session now (still saved to history) |
+| `scale <size>` | HUD size (0.5–3) |
+| `icons` | Item icons on/off |
+| `edit` | How to move the HUD / hide items |
+| `details` | Toggle the HUD between full details and profit only |
+| `hud` | HUD on/off |
+| `move <x> <y>` | Move the HUD |
+| `prices` | Refresh prices |
+| `reload` | Reload the config |
+
+## Moving & editing the HUD
+Open chat (**T**). While chat is open:
+- **Left-click and drag** the HUD to move it.
+- **Right-click** an item, shard or rare-drop line to hide it (it stops counting toward profit). Undo with `/profit unignore <item>`.
+
+`/profit scale <0.5-3>` resizes the HUD, `/profit icons` toggles item icons (icons appear for items that have been in your inventory).
+
+## Slayer quest costs
+Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
+If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
+
+## New in 3.0
+**Accuracy**
+- Bazaar sale values now include Bazaar tax (the `Bazaar tax %` setting), so profit isn't overstated.
+- Items are identified by their real SkyBlock ID once you've held them (pets, books and reforged items price correctly).
+- Items you use up (potions, arrows, visitor requests) go into a separate **Spent** list instead of quietly lowering totals.
+- Items from dungeon reward chests and Garden visitor menus are now counted (other menus are still ignored, so buying isn't "profit").
+- **`/profit debug`** shows what's working (tab list, location, sidebar, prices, icons, scale, mouse, recognised messages).
+  Hypixel messages the mod doesn't understand yet are saved to `config/farmprofit/unrecognised-messages.txt`.
+
+**Location: install the Hypixel Mod API (recommended)**
+Download *Hypixel Mod API* for Fabric 26.1 from Modrinth and put it in `mods`. The mod then gets your exact location from
+Hypixel and no longer depends on the tab list's Area line. Without it, the tab list is used like before.
+
+**New features**
+- Price tooltips: hover any item for Bazaar sell/buy, lowest BIN and NPC price (toggle in HUD settings).
+- Dungeon chest profit: opening a reward chest or the Croesus run view prints each chest's value, cost and profit, plus the best chest.
+- Garden visitors: visitors accepted, copper (valued with `Copper value`), requested items in Spent, rewards in profit.
+- Jacob's contests on the Farming HUD (next crops + countdown; "Best now" marks a crop that's in a running contest).
+  Contest data is community data from the Elite Farmers API (elitebot.dev), collected from SkyHanni users.
+- Mayor on the HUD of the activity they boost (from Hypixel's election data), and in `/farmprofit suggest`.
+- Bazaar: warning when an order you place is far from the market (possible typo), and orders placed today in `/flips log`.
+- New activities: **Kuudra** (`/kuudraprofit`, runs per hour) and **Diana** (`/dianaprofit`, burrows per hour, coins dug).
+- Trophy fish broken down by type on the Fishing HUD.
+- Optional all-time line on every HUD (HUD settings → Show all-time line).
+- The Bazaar orders panel is its own box: drag it separately with chat open.
+- `/profit export` writes `history.csv` (open in Excel/Sheets for graphs); `/profit history` shows a profit/h trend bar.
+
+## Settings menu
+Press **O** (rebind it in Options → Controls → Key Binds → "SkyBlock Profit Counter"), or use `/profit settings`,
+to open a menu with **every** setting, grouped into tabs:
+General, HUD, Farming, Mining, Foraging, Fishing, Combat & Slayers, Dungeons, Bazaar flipping, Items & areas.
+Each activity tab also has a switch to hide that activity's HUD (tracking keeps running).
+Hover a setting for an explanation. On/off settings are buttons, choices cycle when clicked, numbers accept
+`10m` / `500k`, lists are comma separated and item/block maps use `name=ID, name2=ID2`.
+Changes save immediately (text boxes save when you switch tab or press Done). `/flips settings` opens it too.
+
+**For future additions:** the menu is built automatically from `Config.java`. Every new option is added there with
+`@Setting(category = ..., label = ..., desc = ...)` and appears in the menu on its own; an option without the
+annotation still shows up under an "Other" tab.
+
+## Dungeons (☠ Catacombs HUD)
+- Runs, average run time, runs/hour, last score, profit, profit/h and profit per run (drops, rare drops, shards).
+  `/dungeonprofit` for the profit-only view, `/dungeonprofit history` for past sessions.
+- **Secret finder** (no route database, so it works in every room):
+  - Hypixel's own room counter from the action bar: `room 3/7 (4 left)` or `✔ room done`.
+  - The 5 nearest likely secrets with an arrow (relative to where you look), distance and ▲/▼ for above/below:
+    chests, levers, Wither Essence skulls, secret items lying on the floor, and bats.
+  - Chests/levers/skulls you right-click are crossed off.
+  - It shows *candidates* (decorative skulls and some levers aren't secrets). For full routes use Skyblocker / Secret Routes alongside this mod.
+  - `/profit secrets` turns it on/off.
+
+## "Best now" suggestions
+The farming and mining HUDs show which crop / ore makes the most coins per hour right now, e.g.
+`Best now: Nether Wart ~8.1M/h (you: 6.2M/h)` (a green ✔ means you're already on it).
+`/farmprofit suggest` and `/miningprofit suggest` show the full ranking.
+- Farming: your blocks/s (or `defaultBps` until you've farmed a minute) × base drops × (Farming Fortune + crop fortune) × best price (raw, enchanted or NPC).
+- Mining: your Mining Speed vs. each block's strength (`miningEfficiency` = 0.6 for walking/aiming) × fortune × best price, only for blocks on the island you're on.
+These are estimates from Bazaar trends; pests, rare drops and powder aren't included. Turn off with `showSuggestion: false`.
+
+## Bazaar flipping (`/flips`)
+Built in from the Bazaar Flip Assistant. It only reads public bazaar data and your own chat; you do all the clicking.
+- `/flips [count]` – best flips right now (buy order → sell offer, margin after tax, qty, coins/h). Hover for details, **click to open the item in the Bazaar**.
+- `/flips plan [items]` – splits your budget across the best few safe flips.
+- **Order tracking is automatic**: place, flip, claim or cancel orders in-game and the mod reads the `[Bazaar]` chat messages.
+  Open orders appear under the HUD with ✔ (best price), ✖ outbid/undercut + the price to re-list at, or "filled, claim it".
+  You get a ding + chat alert the moment you're outbid or undercut (prices are checked every 20 s while you have orders).
+- Profit is logged when you claim the coins from a sell offer (cost = what you paid, oldest first). `/flips log` shows today / all-time.
+- `/flips orders`, `/flips remove <n>`, `/flips clear`, `/flips hud`
+- `/flips settings` and `/flips set <budget|minvolume|minmargin|maxprice|tax|share|alert|top|sound> <value>`
+  e.g. `/flips set budget 25m`, `/flips set tax 1`, `/flips set alert 500k` (ping for hot flips).
+
+## Tab list widgets
+The mod reads Hypixel's tab list: the **Area** line (to know where you are), **Stats** (fortune, speed,
+Sweep, Magic Find...), **Powders** and **Commissions** (mining), and Forest Whispers (foraging).
 
 ## Setup (no programming tools needed)
 
@@ -89,20 +155,14 @@ Fusing, syphoning, Bazaar and transfer messages are ignored. Toggle with `showSh
 ## Settings
 `.minecraft/config/farmprofit/config.json`
 - `resetMinutes` – idle time before a session ends (default 15)
-- `priceMode` – `"instasell"` (default) or `"sellorder"`
-- `hudX`, `hudY`, `hudMaxItems`, `hudEnabled`
-- `extraItems` – add items the mod doesn't know: `"Item Name": "BAZAAR_ID"`
-- `extraCropBlocks` – add crop blocks: `"block_id": "Crop Name"`
+- `priceMode` – `"best"` (default: Bazaar instasell or NPC, whichever pays more), `"instasell"`, `"sellorder"`, `"npc"`
+- `pauseSeconds` – the timer pauses after this long without activity (default 30), so AFK time doesn't lower profit/h
+- `minItemValue` – items worth less than this are grouped into one "cheap items" HUD line (default 1000)
+- `ignoredItems` – items that never count
+- `hudX`, `hudY`, `hudMaxItems`, `hudEnabled`, `hudDetails`
+- `slayerQuestCost` – coins subtracted from profit per slayer quest started (default 0)
+- `miningAreas`, `foragingAreas` – tab-list Area names for those HUDs
+- `extraItems`, `extraCropBlocks`, `extraOreBlocks`, `extraLogBlocks` – add things the mod doesn't know
+- `showShards`, `showRareDrops`, `showCommissions`, `lowestBinUrl`
 
 History is saved to `.minecraft/config/farmprofit/history.json` (last 200 sessions).
-
-## How items are counted
-- Items landing in your **sacks** are read from Hypixel's `[Sacks]` chat messages (they arrive every ~30s).
-- Items landing in your **inventory** are counted by watching inventory changes while you farm.
-  Compacting (e.g. Wheat → Enchanted Wheat) is handled because it counts the net change.
-- Items with no Bazaar price show `(?)` and count as 0 coins.
-
-## Different Minecraft version?
-Edit the four version lines at the top of `gradle.properties` and the `"minecraft"` line in
-`src/main/resources/fabric.mod.json`, commit, and GitHub rebuilds it. Correct version numbers
-are listed at fabricmc.net/develop.

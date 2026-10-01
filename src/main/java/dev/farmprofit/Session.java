@@ -13,12 +13,32 @@ public final class Session {
     public Map<String, Integer> breaks = new LinkedHashMap<>();
     public Map<String, Long> items = new LinkedHashMap<>();
     public Map<String, Long> powder = new LinkedHashMap<>();
+    /** Items used up (potions, arrows, visitor requests...). Subtracted from profit. */
+    public Map<String, Long> spent = new LinkedHashMap<>();
     /** Items announced in chat (RARE DROP!, PET DROP!, RARE CROP! ...) */
     public Map<String, Integer> rareDrops = new LinkedHashMap<>();
     /** Pest kills by pest type */
     public Map<String, Integer> pests = new LinkedHashMap<>();
     public int pristine;
     public int treeGifts;
+    public int trophyFish;
+    public int slayerQuests;
+    public int runs;
+    public int visitors;
+    public long copper;
+    public int burrows;
+    /** Trophy fish by name, e.g. "Gusher (BRONZE)" */
+    public Map<String, Integer> trophies = new LinkedHashMap<>();
+    public String lastScore;
+    public String floor;
+    /** Slayer quest costs etc. (subtracted from profit) */
+    public double costs;
+    /** Where you were fishing */
+    public String location;
+    /** Coins found directly (fishing treasure etc.) */
+    public double coins;
+    /** Time actually spent active; -1 for sessions saved by older versions. */
+    public long activeMs = -1;
     /** Attribute shards sent to the Hunting Box */
     public Map<String, Integer> shards = new LinkedHashMap<>();
     public int pestActions;
@@ -34,13 +54,33 @@ public final class Session {
         this.type = type;
         this.start = now;
         this.lastActivity = now;
+        this.activeMs = 0;
     }
 
-    public boolean isMining() {
-        return Tracker.DWARVEN.equals(type) || Tracker.HOLLOWS.equals(type) || Tracker.MINESHAFT.equals(type);
+    /** Called on every action; gaps longer than the pause time don't count as farming time. */
+    public void touch(long now) {
+        long gap = now - lastActivity;
+        if (gap > 0 && gap <= Config.get().pauseSeconds * 1000L) activeMs += gap;
+        lastActivity = now;
     }
 
+    public boolean paused(long now) { return now - lastActivity > Config.get().pauseSeconds * 1000L; }
+
+    static boolean ignored(String name) { return Config.get().ignoredItems.contains(name); }
+
+    public boolean isMining() { return Tracker.isMiningType(type); }
     public boolean isForaging() { return Tracker.FORAGING.equals(type); }
+    public boolean isFishing() { return Tracker.FISHING.equals(type); }
+    public boolean isCombat() { return Tracker.COMBAT.equals(type); }
+    public boolean isFarming() { return type == null || Tracker.FARMING.equals(type); }
+    public boolean isDungeons() { return Tracker.DUNGEONS.equals(type); }
+    public boolean isKuudra() { return Tracker.KUUDRA.equals(type); }
+    public boolean isDiana() { return Tracker.DIANA.equals(type); }
+
+    public boolean isEmpty() {
+        return totalBreaks() == 0 && runs == 0 && burrows == 0 && visitors == 0 && items.isEmpty() && coins == 0 && (rareDrops == null || rareDrops.isEmpty())
+                && (shards == null || shards.isEmpty());
+    }
 
     public void addBreak(String what) { breaks.merge(what, 1, Integer::sum); }
 
@@ -49,9 +89,21 @@ public final class Session {
         if (v == 0) items.remove(name);
     }
 
+    public void addSpent(String name, long amount) { spent.merge(name, amount, Long::sum); }
+
+    public double spentValue() {
+        double t = 0;
+        if (spent != null) for (var e : spent.entrySet()) if (!ignored(e.getKey())) t += e.getValue() * Prices.price(e.getKey());
+        return t;
+    }
+
     public void addPowder(String kind, long amount) { powder.merge(kind, amount, Long::sum); }
 
-    public long durationMs(long now) { return Math.max(0, (end > 0 ? end : now) - start); }
+    public long durationMs(long now) {
+        if (activeMs < 0) return Math.max(0, (end > 0 ? end : now) - start);   // old history entries
+        if (end > 0 || paused(now)) return activeMs;
+        return activeMs + Math.max(0, now - lastActivity);
+    }
 
     public double hours(long now) { return durationMs(now) / 3_600_000.0; }
 
@@ -66,14 +118,23 @@ public final class Session {
         String best = null;
         int max = -1;
         for (var e : breaks.entrySet()) if (e.getValue() > max) { max = e.getValue(); best = e.getKey(); }
-        return best == null ? "Nothing yet" : best;
+        if (best == null && location != null) return location;
+        if (best == null && isDungeons()) return floor != null ? floor : "Catacombs";
+        if (best == null && isKuudra()) return floor != null ? floor : "Kuudra";
+        if (best == null && isDiana()) return "Mythological Ritual";
+        if (best == null) return isCombat() ? "No bosses yet" : "Nothing yet";
+        return best;
     }
 
     public double value() {
         double total = 0;
-        for (var e : items.entrySet()) total += e.getValue() * Prices.price(e.getKey());
+        for (var e : items.entrySet()) if (!ignored(e.getKey())) total += e.getValue() * Prices.price(e.getKey());
+        total += coins;
+        total += copper * Config.get().copperValue;
         if (rareDrops != null) for (var e : rareDrops.entrySet()) total += rareValue(e.getKey(), e.getValue());
         total += shardValue();
+        total -= costs;
+        total -= spentValue();
         return total;
     }
 
@@ -82,12 +143,12 @@ public final class Session {
 
     /** Value a rare drop adds to profit (0 if it was already counted as a normal item). */
     public double rareValue(String name, int count) {
-        return rareAlreadyCounted(name) ? 0 : count * Prices.price(name);
+        return rareAlreadyCounted(name) || ignored(name) ? 0 : count * Prices.price(name);
     }
 
     public double shardValue() {
         double total = 0;
-        if (shards != null) for (var e : shards.entrySet()) total += e.getValue() * Prices.price(e.getKey());
+        if (shards != null) for (var e : shards.entrySet()) if (!ignored(e.getKey())) total += e.getValue() * Prices.price(e.getKey());
         return total;
     }
 

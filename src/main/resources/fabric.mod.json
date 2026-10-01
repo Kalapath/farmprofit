@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "farmprofit",
+  "version": "${version}",
+  "name": "Farm Profit Counter",
+  "description": "Tracks Hypixel SkyBlock farming sessions: time, crop, fortune, items and profit per hour.",
+  "authors": ["you"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.farmprofit.FarmProfitClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

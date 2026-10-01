@@ -171,9 +171,9 @@ public final class Tracker {
         return r == null ? "" : r;
     }
 
-    public static void say(String msg) {
+   public static void say(String msg) {
         Minecraft mc = Minecraft.getInstance();
-        mc.gui.getChat().addMessage(Component.literal(msg));
+        if (mc.player != null) mc.player.displayClientMessage(Component.literal(msg), false);
     }
 
     private Tracker() {}

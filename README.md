@@ -1,4 +1,4 @@
-# Farm Profit Counter (Hypixel SkyBlock, Fabric 26.1.2)
+# SkyBlock Profit Counter – Farming & Mining (Hypixel SkyBlock, Fabric 26.1.2)
 
 ## What it shows (HUD, top-left)
 - How long you've been farming
@@ -8,6 +8,46 @@
 - Every item you've farmed and how much it's worth
 - A countdown when you're idle. After 15 minutes with no crop broken / no pest
   hit or vacuumed, the session ends and is saved to the history log.
+
+## Mining (v1.1)
+A separate HUD appears automatically in each mining area:
+- **Dwarven Mines** (green): mining speed/fortune, ore & block & dwarven metal fortune, Mithril Powder gained + per hour, items mined, commissions.
+- **Crystal Hollows** (pink): mining speed/fortune, gemstone fortune, Gemstone + Mithril Powder, which gemstones/ores you've been mining, items, commissions.
+- **Glacite Mineshaft** (aqua): mining speed/fortune, gemstone fortune, Glacite Powder, blocks mined, items.
+
+Each area keeps its own session with its own 15-minute idle timer, so popping into a mineshaft and back
+doesn't reset your Dwarven Mines session. Finished mining sessions go into the same history log.
+
+For mining to work, Hypixel's tab list needs the **Info/Area** line (shows "Area: Dwarven Mines" etc.),
+the **Stats** widget (speed/fortune) and the **Powders** widget (powder tracking).
+Commissions show if the Commissions widget is enabled.
+
+`/miningprofit` works exactly like `/farmprofit` (both act on whatever HUD you're currently seeing).
+If a block isn't being counted, add it in the config under `extraOreBlocks`, e.g. `"clay": "Tungsten"`.
+
+## Foraging (v1.3)
+A green **♣ Foraging** HUD appears on foraging islands (default: Galatea and The Park; change with
+`foragingAreas` in the config). It shows time, which wood you're chopping (Fig, Mangrove, Oak, ...), logs and
+blocks per second, **Tree Gifts** and trees per minute (Galatea), Sweep / Foraging Fortune / Fig & Mangrove
+Fortune, **Forest Whispers** gained + per hour, profit, profit/h, items chopped, rare drops and the idle timer.
+`/foragingprofit` works like the other commands. Unknown log blocks can be added under `extraLogBlocks`.
+Turn on the Stats widget (Sweep, Foraging Fortune) and the widget showing Forest Whispers in the tab list.
+
+## Attribute shards (v1.4)
+Shards announced in chat (from Tree Gifts, hunting, traps, mob drops...) are counted and shown under **Shards**
+with their Bazaar value, and added to profit (they go to the Hunting Box, so they can't be counted twice).
+The Foraging HUD always shows the shard line; other HUDs show it once you get a shard (e.g. Pest Shards while farming).
+Fusing, syphoning, Bazaar and transfer messages are ignored. Toggle with `showShards` in the config.
+
+## Rare drops, pests & pristine (v1.2)
+- Every `RARE DROP!`, `VERY RARE DROP!`, `CRAZY RARE DROP!`, `PET DROP!`, `RARE CROP!` (etc.) message during a
+  session is logged under **Rare drops** on the HUD and in history, with its value.
+- Farming: pest kills are counted by type from the "You received ... for killing a ..." message.
+- Crystal Hollows / Mineshaft: Pristine procs are counted.
+- Rare drops are added to profit **unless** the same item was already counted through your inventory/sacks
+  (shown as "in items"), so nothing is counted twice.
+- Auction-house items are priced with lowest BIN from `lowestBinUrl` in the config; Bazaar items use the Bazaar.
+  Items with no price show "?". Pets usually show "?".
 
 ## Commands
 | Command | What it does |

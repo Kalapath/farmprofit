@@ -6,6 +6,23 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # if one Minecraft version fails, the other still builds
+      matrix:
+        include:
+          - mc: "26.1.2"
+            loader: "0.19.2"
+            loom: "1.16-SNAPSHOT"
+            fabric_api: "0.146.1+26.1.2"
+            modmenu: "18.0.0"
+            dep: "~26.1"
+          - mc: "26.2"
+            loader: "0.19.3"
+            loom: "1.17-SNAPSHOT"
+            fabric_api: "0.153.0+26.2"
+            modmenu: "20.0.0-beta.4"
+            dep: "~26.2"
+    name: Minecraft ${{ matrix.mc }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -15,10 +32,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.4.1'
-      - run: gradle build --no-daemon
+      - run: >
+          gradle build --no-daemon
+          -Pminecraft_version=${{ matrix.mc }} -Ploader_version=${{ matrix.loader }}
+          -Ploom_version=${{ matrix.loom }} -Pfabric_api_version=${{ matrix.fabric_api }}
+          -Pmodmenu_version=${{ matrix.modmenu }} -Pminecraft_dep=${{ matrix.dep }}
       - uses: actions/upload-artifact@v4
         with:
-          name: farmprofit-mod
+          name: skyassist-mc${{ matrix.mc }}
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar

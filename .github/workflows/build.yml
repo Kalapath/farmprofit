@@ -11,12 +11,14 @@ jobs:
       matrix:
         include:
           - mc: "26.1.2"
+            gradle: "9.4.1"
             loader: "0.19.2"
             loom: "1.16-SNAPSHOT"
             fabric_api: "0.146.1+26.1.2"
             modmenu: "18.0.0"
             dep: "~26.1"
           - mc: "26.2"
+            gradle: "9.5.0"
             loader: "0.19.3"
             loom: "1.17-SNAPSHOT"
             fabric_api: "0.153.0+26.2"
@@ -31,7 +33,7 @@ jobs:
           java-version: 25
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.4.1'
+          gradle-version: ${{ matrix.gradle }}
       - run: >
           gradle build --no-daemon
           -Pminecraft_version=${{ matrix.mc }} -Ploader_version=${{ matrix.loader }}

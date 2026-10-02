@@ -89,13 +89,34 @@ public final class Prices {
         try { return o.has(key) ? o.get(key).getAsDouble() : 0; } catch (Exception e) { return 0; }
     }
 
+    /** Readable name for a Bazaar ID, the way the game shows it. */
     public static String nameOf(String id) {
         String n = ID_NAMES.get(id);
         if (n != null) return n;
-        String s = id.replaceFirst("^ENCHANTMENT_", "").toLowerCase().replace('_', ' ');
+        n = Items.nameForId(id);                                   // our own list (Cocoa Beans, Raw Salmon, Mithril...)
+        if (n != null) return n;
+        if (id.startsWith("ESSENCE_")) return words(id.substring(8)) + " Essence";              // ESSENCE_DRAGON -> Dragon Essence
+        if (id.startsWith("SHARD_")) return words(id.substring(6)) + " Shard";                  // SHARD_SPARROW -> Sparrow Shard
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^ENCHANTMENT_(.+)_(\\d+)$").matcher(id);
+        if (m.matches()) return words(m.group(1)) + " " + roman(Integer.parseInt(m.group(2)));  // ENCHANTMENT_SHARPNESS_7 -> Sharpness VII
+        if (id.startsWith("ENCHANTMENT_")) return words(id.substring(12));
+        return words(id.replaceAll(":\\d+$", ""));
+    }
+
+    private static String words(String id) {
         StringBuilder b = new StringBuilder();
-        for (String w : s.split(" ")) if (!w.isEmpty()) b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
-        return b.toString().trim();
+        for (String w : id.toLowerCase(java.util.Locale.ROOT).split("_")) {
+            if (w.isEmpty()) continue;
+            if (w.equals("of") || w.equals("the")) b.append(w).append(' ');
+            else b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
+        }
+        String s = b.toString().trim();
+        return s.isEmpty() ? id : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private static String roman(int n) {
+        String[] r = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
+        return n >= 0 && n < r.length ? r[n] : String.valueOf(n);
     }
 
     private static void parseItems(String body) {

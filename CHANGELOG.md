@@ -1,5 +1,8 @@
 # Changelog
 
+## 6.2.0
+- Profit fix for crafting from sacks, rare drops shown once, item names, pest highlighting, /greenhouse, craft flips (Bazaar + AH), /shards, talismans other ways + NPC prices, inventory search, daily/weekly/monthly profit, /dungeon info.
+
 ## 6.0.0
 - Renamed to SkyAssist (mod ID skyassist, config folder moved automatically, /skyassist command).
 

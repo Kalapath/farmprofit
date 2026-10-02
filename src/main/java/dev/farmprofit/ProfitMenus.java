@@ -36,6 +36,9 @@ public final class ProfitMenus {
         rows.add(entry("§fLifetime totals", "Time, profit and profit/h per activity, all time.", () -> Compat.setScreen(mc(), totals(ref.screen))));
         rows.add(entry("§fBest now", "Which crop / ore earns the most right now.", () -> Compat.setScreen(mc(), suggest(0, ref.screen))));
         rows.add(entry("§fBazaar flips", "Flip finder, plan, your orders and flip profit.", () -> Compat.setScreen(mc(), flips(0, ref.screen))));
+        rows.add(entry("§fDungeon", "This run's secrets, crypts, deaths, puzzles, team; past runs.", () -> Compat.setScreen(mc(), Dungeon.screen(Dungeon.inDungeon() ? 0 : 3, ref.screen))));
+        rows.add(entry("§fGreenhouse", "Plan a mutation: what to unlock first and what to plant where.", () -> Compat.setScreen(mc(), Greenhouse.screen(ref.screen))));
+        rows.add(entry("§fAttribute shards", "Cheapest attribute levels to buy next.", () -> Compat.setScreen(mc(), Shards.screen(ref.screen))));
         rows.add(entry("§fNext talismans", "Cheapest Magical Power you don't have yet.", () -> Compat.setScreen(mc(), new TalismansScreen())));
         rows.add(entry("§fSettings", "Every setting, with search.", () -> Compat.setScreen(mc(), new SettingsScreen(ref.screen))));
         rows.add(entry("§fCommands", "Every command with a short explanation.", () -> Compat.setScreen(mc(), Commands.screen(ref.screen))));
@@ -116,8 +119,9 @@ public final class ProfitMenus {
 
     public static Screen history(String type, Screen parent) {
         List<Tab> tabs = new ArrayList<>();
+        tabs.add(new Tab("Day / week / month", ProfitMenus::periodsPage));
         tabs.add(new Tab("All", () -> historyPage(null)));
-        int start = 0;
+        int start = type == null ? 0 : 1;
         for (String t : ACTIVITIES) {
             if (t.equals(type)) start = tabs.size();
             tabs.add(new Tab(title(t), () -> historyPage(t)));
@@ -146,6 +150,50 @@ public final class ProfitMenus {
         footer.add("§8Hover a session for details.");
         List<Action> top = List.of(new Action("Export CSV", "Saves all history to config/skyassist/history.csv for Excel / Google Sheets.", FarmProfitClient::exportCsv));
         return new Page(new String[]{"When", "Activity", "What", "Time", "Profit", "Per hour"}, new int[]{70, 90, 100, 70, 60, 60}, rows, top, footer);
+    }
+
+    /** Profit today / this week / this month..., with flips, and a per-activity breakdown on hover. */
+    private static Page periodsPage() {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        java.time.LocalDate today = java.time.LocalDate.now(zone);
+        long now = System.currentTimeMillis();
+        Object[][] periods = {
+                {"Today", today.atStartOfDay(zone).toInstant().toEpochMilli(), now},
+                {"Yesterday", today.minusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(), today.atStartOfDay(zone).toInstant().toEpochMilli()},
+                {"This week", today.with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli(), now},
+                {"Last 7 days", now - 7L * 86_400_000, now},
+                {"This month", today.withDayOfMonth(1).atStartOfDay(zone).toInstant().toEpochMilli(), now},
+                {"Last 30 days", now - 30L * 86_400_000, now},
+                {"All time", 0L, now}};
+        List<Row> rows = new ArrayList<>();
+        for (Object[] p : periods) {
+            long from = (long) p[1], to = (long) p[2];
+            double profit = 0;
+            long ms = 0;
+            int sessions = 0;
+            java.util.Map<String, Double> byType = new java.util.LinkedHashMap<>();
+            List<Session> list = new ArrayList<>(History.all());
+            list.addAll(Tracker.sessions.values());                         // running sessions count too
+            for (Session s : list) {
+                long when = s.end > 0 ? s.end : s.lastActivity;
+                if (when < from || when > to) continue;
+                double v = s.end > 0 ? s.profit : s.value();
+                profit += v;
+                ms += s.durationMs(now);
+                sessions++;
+                byType.merge(Tracker.normalType(s.type), v, Double::sum);
+            }
+            double flips = 0;
+            for (var e : Bazaar.state().log) if (e.time >= from && e.time <= to) flips += e.profit;
+            if (flips != 0) byType.merge("Bazaar flips", flips, Double::sum);
+            double h = ms / 3_600_000.0;
+            StringBuilder tip = new StringBuilder("§7" + p[0]);
+            byType.forEach((k, v) -> tip.append("\n§f").append(k).append(": §6").append(Fmt.coins(v)));
+            rows.add(new Row(new String[]{"§f" + p[0], "§6" + Fmt.coins(profit + flips), "§7" + Fmt.duration(ms), "§7" + sessions,
+                    "§6" + (h > 0 ? Fmt.coins(profit / h) : "0") + "/h", flips != 0 ? "§e" + Fmt.coins(flips) : "§8-"}, tip.toString(), List.of()));
+        }
+        return new Page(new String[]{"Period", "Profit", "Time", "Sessions", "Per hour", "Flips"}, new int[]{90, 70, 90, 55, 70, 60}, rows, List.of(),
+                List.of("§8Profit includes Bazaar flips. Hover a row to see it split by activity.", "§8Per hour is from activity time (flips not included)."));
     }
 
     private static String joinCounts(Map<String, Integer> m) {
@@ -207,6 +255,8 @@ public final class ProfitMenus {
         ref.screen = new MenuScreen("Bazaar flips", List.of(
                 new Tab("Best flips", () -> flipsPage(Bazaar.computeFlips(), ref, false)),
                 new Tab("Plan", () -> flipsPage(FlipsCommand.planList(5), ref, true)),
+                new Tab("Craft → Bazaar", () -> craftPage(false, ref)),
+                new Tab("Craft → AH", () -> craftPage(true, ref)),
                 new Tab("My orders", () -> ordersPage(ref)),
                 new Tab("Profit log", ProfitMenus::logPage)
         ), startTab, parent);
@@ -244,6 +294,30 @@ public final class ProfitMenus {
         if (plan) footer.add("§7Plan uses §6" + Fmt.coins(cost) + "§7, expected profit §6" + Fmt.coins(profit) + "§7. Place the orders yourself; they're tracked from chat.");
         if (!Prices.loaded()) footer.add("§cPrices are still loading — press Refresh prices.");
         return new Page(new String[]{"Item", "Buy → sell", "Margin", "Qty", "Profit"}, new int[]{150, 120, 50, 60, 70}, rows, flipTop(ref), footer);
+    }
+
+    private static Page craftPage(boolean auction, Ref ref) {
+        List<Row> rows = new ArrayList<>();
+        int i = 1;
+        for (CraftFlips.Flip f : CraftFlips.compute(auction)) {
+            if (i > 60) break;
+            String tip = "§a" + f.name() + (f.makes() > 1 ? " §7(recipe makes " + f.makes() + ")" : "") + "\n§7Ingredients: §f" + f.ingredients()
+                    + "\n§7Buy them for §6" + Fmt.coins(f.cost()) + "§7, sell for §6" + Fmt.coins(f.sell()) + " §8(after tax)"
+                    + (f.note() != null ? "\n§e" + f.note() : "");
+            List<Action> buttons = new ArrayList<>();
+            buttons.add(new Action("§bRecipe", "Opens the recipe for " + f.name() + ".", () -> MenuScreen.runCommand("recipe " + f.name())));
+            if (auction) buttons.add(new Action("§eAH", "Searches the Auction House for " + f.name() + " (check recent prices).", () -> MenuScreen.runCommand("ahs " + f.name())));
+            else buttons.add(new Action("§eBazaar", "Opens " + f.name() + " in the Bazaar.", () -> MenuScreen.runCommand("bz " + f.name())));
+            rows.add(new Row(new String[]{"§8" + i++ + ". §a" + f.name(), "§6" + Fmt.coins(f.cost()), "§6" + Fmt.coins(f.sell()),
+                    "§a+" + Fmt.coins(f.profit()), String.format(java.util.Locale.US, "§7%.0f%%", f.margin()),
+                    auction ? "" : "§6" + Fmt.coins(f.perHour()) + "/h"}, tip, buttons));
+        }
+        List<String> footer = new ArrayList<>();
+        footer.add(auction ? "§7Ingredients bought now, result sold at lowest BIN (minus AH fees). Check recent sales before crafting a lot."
+                : "§7Ingredients bought instantly, result sold with a sell offer (after tax). Per hour uses your volume share and budget.");
+        footer.add("§8Hover a row for the ingredients. Settings → Bazaar flipping: min profit, min margin, budget.");
+        return new Page(new String[]{"Craft", "Cost", "Sells for", "Profit", "Margin", auction ? "" : "Per hour"},
+                new int[]{140, 60, 60, 60, 45, 60}, rows, flipTop(ref), footer);
     }
 
     private static Page ordersPage(Ref ref) {

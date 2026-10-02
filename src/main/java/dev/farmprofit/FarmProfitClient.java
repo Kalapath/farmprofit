@@ -69,6 +69,7 @@ public final class FarmProfitClient implements ClientModInitializer {
         });
         // mouse wheel inside menus scrolls long tooltips (and only then; otherwise the menu scrolls as usual)
         java.util.Set<Object> overlaid = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+        ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> InvSearch.attach(screen, w, h));
         ScreenEvents.BEFORE_INIT.register((client, screen, w, h) -> {
             ScreenMouseEvents.allowMouseScroll(screen).register((s, mouseX, mouseY, horizontal, vertical) ->
                     TooltipScroll.onScroll(vertical));
@@ -195,6 +196,21 @@ public final class FarmProfitClient implements ClientModInitializer {
                     .then(ClientCommands.literal("chat").executes(ctx -> { Accessories.show(Config.get().talismanCount); return 1; }))
                     .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 50))
                             .executes(ctx -> { TalismansScreen.requestOpen(IntegerArgumentType.getInteger(ctx, "count")); return 1; })));
+            dispatcher.register(ClientCommands.literal("greenhouse").executes(ctx -> { MenuScreen.open(() -> Greenhouse.screen(null)); return 1; }));
+            dispatcher.register(ClientCommands.literal("shards").executes(ctx -> { MenuScreen.open(() -> Shards.screen(null)); return 1; }));
+            dispatcher.register(ClientCommands.literal("dungeon")
+                    .executes(ctx -> { MenuScreen.open(() -> Dungeon.screen(Dungeon.inDungeon() ? 0 : 3, null)); return 1; })
+                    .then(ClientCommands.literal("chat").executes(ctx -> { Dungeon.sayLive(); return 1; }))
+                    .then(ClientCommands.literal("puzzles").executes(ctx -> { MenuScreen.open(() -> Dungeon.screen(1, null)); return 1; }))
+                    .then(ClientCommands.literal("team").executes(ctx -> { MenuScreen.open(() -> Dungeon.screen(2, null)); return 1; }))
+                    .then(ClientCommands.literal("runs").executes(ctx -> { MenuScreen.open(() -> Dungeon.screen(3, null)); return 1; }))
+                    .then(ClientCommands.literal("secrets").executes(ctx -> {
+                        Dungeon.Live l = Dungeon.live();
+                        Tracker.say("§4[Dungeon] §7Secrets: you §f" + (l.mySecrets() == null ? "?" : l.mySecrets()) + "§7, team §f"
+                                + (l.teamSecretsPct() == null ? "?" : l.teamSecretsPct() + "%")
+                                + (Secrets.roomTotal >= 0 ? "§7, this room §f" + Secrets.roomFound + "/" + Secrets.roomTotal : ""));
+                        return 1;
+                    })));
             dispatcher.register(ClientCommands.literal("calc")
                     .then(ClientCommands.argument("sum", StringArgumentType.greedyString()).executes(ctx -> {
                         String sum = StringArgumentType.getString(ctx, "sum");

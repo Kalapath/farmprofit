@@ -124,7 +124,11 @@ public final class Accessories {
 
     // ---------------- recommendations ----------------
 
+    /** Accessories you don't have that can't be bought or crafted (quests, drops, events...), filled by recommend(). */
+    public static final List<Pick> unbuyable = new ArrayList<>();
+
     public static List<Pick> recommend(int count) {
+        unbuyable.clear();
         Config c = Config.get();
         Set<String> have = owned();
         Map<List<String>, Pick> bestPerFamily = new HashMap<>();
@@ -145,11 +149,13 @@ public final class Accessories {
             if (ownedTier >= 0) free.addAll(chain.subList(0, ownedTier + 1));   // the part you own costs nothing
             double bin = Prices.binPrice(info.id());
             double craft = c.talismanUseCraft ? CraftCost.costWith(info.id(), free) : 0;
-            double cost;
-            String source;
-            if (bin > 0 && (craft <= 0 || bin <= craft)) { cost = bin; source = "AH"; }
-            else if (craft > 0) { cost = craft; source = "craft"; }
-            else continue;                                                      // no price: NPC / special item
+            double npc = CraftCost.npcShopCost(info.id());
+            double cost = Double.MAX_VALUE;
+            String source = null;
+            if (bin > 0 && bin < cost) { cost = bin; source = "AH"; }
+            if (craft > 0 && craft < cost) { cost = craft; source = "craft"; }
+            if (npc > 0 && npc < cost) { cost = npc; source = "NPC"; }
+            if (source == null) { unbuyable.add(new Pick(info, gain, 0, "other", ownedInfo != null ? ownedInfo.name() : null)); continue; }
             if (c.talismanMaxPrice > 0 && cost > c.talismanMaxPrice) continue;
             // buying a higher tier on the AH replaces what you own (you could sell it), crafting uses it up
             Pick p = new Pick(info, gain, cost, source, ownedInfo != null ? ownedInfo.name() : null);
@@ -161,6 +167,7 @@ public final class Accessories {
         List<Pick> all = new ArrayList<>(singles);
         all.addAll(bestPerFamily.values());
         all.sort((a, b) -> Double.compare(a.cost() / a.gain(), b.cost() / b.gain()));
+        unbuyable.sort((a, b) -> b.gain() - a.gain());
         return all.subList(0, Math.min(count, all.size()));
     }
 

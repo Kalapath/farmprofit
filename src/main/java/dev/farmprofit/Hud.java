@@ -57,6 +57,7 @@ public final class Hud {
             if (details) { String m = Election.hudLine(type); if (m != null) out.add(m); }
             if (details) addCommissions(out, type);
             if (together && Tracker.DUNGEONS.equals(type)) Secrets.addHudLines(out);
+            if (Tracker.FARMING.equals(type)) { Pests.addHudLines(out); Greenhouse.addHudLines(out); }
             return out;
         }
 
@@ -253,6 +254,7 @@ public final class Hud {
     }
 
     private static void addRunLine(Lines out, Session s, long now) {
+        if (s.isDungeons()) { String info = Dungeon.hudLine(); if (info != null) out.add(info); }
         if (s.runs == 0) { out.add("§7Runs: §f0 §8(finish a run to see your pace)"); return; }
         double h = s.hours(now);
         long avg = s.durationMs(now) / s.runs;
@@ -307,6 +309,7 @@ public final class Hud {
 
     private static void addExtras(Lines out, Session s) {
         Config c = Config.get();
+        if (s.isFarming()) { Pests.addHudLines(out); Greenhouse.addHudLines(out); }
         if (s.isFarming() && s.totalPests() > 0 && c.farmShowPests) {
             var pests = new ArrayList<>(s.pests.entrySet());
             pests.sort((a, b) -> b.getValue() - a.getValue());
@@ -372,8 +375,8 @@ public final class Hud {
 
     public static String rareLine(Session s, Map.Entry<String, Integer> d) {
         double each = Prices.price(d.getKey());
-        String value = each == 0 ? "?" : Fmt.coins(each * d.getValue());
-        if (s.rareAlreadyCounted(d.getKey())) value += ", in items";
+        long amount = s.rareAlreadyCounted(d.getKey()) ? Math.max(d.getValue(), s.items.get(d.getKey())) : d.getValue();
+        String value = each == 0 ? "?" : Fmt.coins(each * amount);
         return " §d" + d.getValue() + "x §f" + d.getKey() + " §8(" + value + ")";
     }
 
@@ -420,6 +423,7 @@ public final class Hud {
     public static List<Map.Entry<String, Long>> sortedItems(Session s) {
         var items = new ArrayList<>(s.items.entrySet());
         items.removeIf(e -> Session.ignored(e.getKey()));
+        if (s.rareDrops != null) items.removeIf(e -> s.rareDrops.containsKey(e.getKey()));   // shown under Rare drops
         items.sort((a, b) -> Double.compare(b.getValue() * Prices.price(b.getKey()), a.getValue() * Prices.price(a.getKey())));
         return items;
     }

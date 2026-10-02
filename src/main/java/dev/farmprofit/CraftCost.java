@@ -32,6 +32,10 @@ public final class CraftCost {
     private record Recipe(Map<String, Integer> ingredients, int count) {}
 
     private static final Map<String, Recipe> RECIPES = new ConcurrentHashMap<>();
+    /** id -> {coins, then ingredient id/amount pairs as a Recipe} for things sold by NPCs */
+    private static final Map<String, Object[]> NPC_SHOP = new ConcurrentHashMap<>();
+    /** id -> short "how to get it" text from the item data (e.g. "Requires Farming Skill 7") */
+    public static final Map<String, String> HINTS = new ConcurrentHashMap<>();
     private static final Path ZIP = Config.DIR.resolve("neu-repo.zip");
     private static volatile boolean loading;
     private static volatile long lastCheck;
@@ -86,6 +90,27 @@ public final class CraftCost {
                     if (!item.has("internalname")) continue;
                     String id = item.get("internalname").getAsString();
                     Accessories.ingest(id, item);
+                    Shards.ingest(id, item);
+                    if (item.has("crafttext") && !item.get("crafttext").getAsString().isBlank())
+                        HINTS.put(id, Tracker.strip(item.get("crafttext").getAsString()));
+                    if (item.has("recipes") && item.get("recipes").isJsonArray()) {
+                        for (JsonElement r : item.getAsJsonArray("recipes")) {
+                            JsonObject ro = r.getAsJsonObject();
+                            if (!ro.has("type") || !ro.get("type").getAsString().equals("npc_shop") || !ro.has("cost")) continue;
+                            double coins = 0;
+                            Map<String, Integer> other = new HashMap<>();
+                            for (JsonElement c : ro.getAsJsonArray("cost")) {
+                                String v = c.getAsString();
+                                int cut = v.lastIndexOf(':');
+                                String cid = cut > 0 ? v.substring(0, cut) : v;
+                                double n = 1;
+                                try { if (cut > 0) n = Double.parseDouble(v.substring(cut + 1)); } catch (NumberFormatException ignored) {}
+                                if (cid.equals("SKYBLOCK_COIN")) coins += n; else other.merge(cid, (int) n, Integer::sum);
+                            }
+                            NPC_SHOP.put(id, new Object[]{coins, other});
+                            break;
+                        }
+                    }
                     JsonObject grid = null;
                     int count = 1;
                     if (item.has("recipe") && item.get("recipe").isJsonObject()) grid = item.getAsJsonObject("recipe");
@@ -157,6 +182,27 @@ public final class CraftCost {
             total += each * e.getValue();
         }
         return total / Math.max(1, r.count());
+    }
+
+    /** Price at an NPC shop (coins + any items it also asks for), 0 if not sold or an item has no price. */
+    @SuppressWarnings("unchecked")
+    public static double npcShopCost(String id) {
+        Object[] o = NPC_SHOP.get(id);
+        if (o == null) return 0;
+        double total = (double) o[0];
+        for (var e : ((Map<String, Integer>) o[1]).entrySet()) {
+            double each = cheapest(e.getKey(), 2, new HashSet<>());
+            if (each <= 0) return 0;
+            total += each * e.getValue();
+        }
+        return total;
+    }
+
+    /** Every recipe: result id -> (ingredients, how many it makes). */
+    public static Map<String, Map.Entry<Map<String, Integer>, Integer>> recipes() {
+        Map<String, Map.Entry<Map<String, Integer>, Integer>> out = new HashMap<>();
+        RECIPES.forEach((k, v) -> out.put(k, Map.entry(v.ingredients(), v.count())));
+        return out;
     }
 
     /** Craft cost of one item, treating the given items as already owned (free). 0 if it can't be crafted. */

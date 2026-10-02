@@ -11,6 +11,8 @@ public final class Visitors {
     private static final Pattern ACCEPTED = Pattern.compile("^OFFER ACCEPTED with (.+?)(?: \\((.+)\\))?$");
     private static final Pattern REWARD = Pattern.compile("^\\+?([\\d,.]+[kKmM]?)x? (.+)$");
     private static long rewardWindowUntil;
+    /** When the last visitor offer was accepted (their items leave your sacks right after). */
+    static volatile long lastAccepted;
 
     /** Returns true if the message was part of a visitor offer. */
     public static boolean onChat(String plain) {
@@ -19,6 +21,7 @@ public final class Visitors {
             Session s = Tracker.farmingSession();
             s.visitors++;
             rewardWindowUntil = System.currentTimeMillis() + 3000;
+            lastAccepted = System.currentTimeMillis();
             Debug.saw("visitor");
             return true;
         }

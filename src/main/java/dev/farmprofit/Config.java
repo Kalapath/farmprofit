@@ -59,6 +59,12 @@ public final class Config {
     public boolean farmShowBps = true;
     @Setting(category = "Farming", label = "Show pests", desc = "Pests killed by type.")
     public boolean farmShowPests = true;
+    @Setting(category = "Farming", label = "Highlight pests", desc = "Fire particles on every pest you can see, plus a list with arrows, distances and pest plots.")
+    public boolean pestHighlight = true;
+    @Setting(category = "Farming", label = "Trail to pests", desc = "A short particle trail from you toward each pest.")
+    public boolean pestTrail = true;
+    @Setting(category = "Farming", label = "Greenhouse guide", desc = "When a mutation is planned (/greenhouse): markers on the plot you look at and a layout grid on the HUD.")
+    public boolean greenhouseGuide = true;
     @Setting(category = "Farming", label = "Show visitors", desc = "Garden visitors accepted.")
     public boolean farmShowVisitors = true;
     @Setting(category = "Farming", label = "Contest reminder", desc = "Chat ping 1 minute before a Jacob's contest starts.")
@@ -165,6 +171,10 @@ public final class Config {
     public String enchantDataUrl = "https://raw.githubusercontent.com/SkyKings-Guild/Bot-Data/main/skyblock/enchants.json";
     @Setting(category = "Items & areas", label = "Scroll long tooltips", desc = "Item descriptions taller than your screen can be scrolled with the mouse wheel.")
     public boolean tooltipScroll = true;
+    @Setting(category = "Items & areas", label = "Inventory search box", desc = "A search box under every inventory and menu: matching items are highlighted, the rest dimmed.")
+    public boolean inventorySearch = true;
+    @Setting(category = "Items & areas", label = "Search descriptions too", desc = "The search box also matches text in item descriptions (e.g. \"Farming Fortune\").")
+    public boolean inventorySearchLore = true;
     @Setting(category = "Items & areas", label = "Tooltip scroll speed", desc = "Lines moved per mouse-wheel notch.", min = 1, max = 20)
     public int tooltipScrollSpeed = 3;
     @Setting(category = "Items & areas", label = "Craft cost in tooltips", desc = "Shows what an item costs to craft from bought ingredients, and whether crafting or buying is cheaper.")
@@ -277,6 +287,8 @@ public final class Config {
     /** Dungeon secret finder on the Catacombs HUD. */
     @Setting(category = "Dungeons", label = "Dungeon secret finder", desc = "Room counter and nearby secret list on the Catacombs HUD.")
     public boolean secretFinder = true;
+    @Setting(category = "Dungeons", label = "Show run info", desc = "Your secrets, team secrets %, crypts and deaths on the Catacombs HUD.")
+    public boolean dungShowRunInfo = true;
     @Setting(category = "Dungeons", label = "Chest profit in chat", desc = "When you open a reward chest or Croesus, show each chest's value, cost and profit.")
     public boolean chestProfit = true;
     @Setting(category = "Items & areas", label = "Count items in menus", desc = "Comma separated menu titles where items you receive count as profit (reward chests).")
@@ -312,6 +324,8 @@ public final class Config {
     public boolean bazaarHud = true;
     @Setting(category = "Bazaar flipping", label = "Alert sound", desc = "Ding when you're outbid/undercut or an order fills.")
     public boolean bzSound = true;
+    @Setting(category = "Bazaar flipping", label = "Craft flips: min profit", desc = "Craft flips (Craft → Bazaar / AH tabs) must make at least this much per craft.", min = 0, max = 1e12)
+    public double craftFlipMinProfit = 1000;
     /** Coins subtracted from profit every time a slayer quest starts (set to what your tier costs). */
     @Setting(category = "Combat & Slayers", label = "Slayer quest cost", desc = "Coins subtracted per slayer quest. 0 = detect automatically from your purse.", min = 0, max = 1000000000.0)
     public double slayerQuestCost = 0;

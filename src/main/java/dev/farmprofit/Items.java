@@ -170,6 +170,19 @@ public final class Items {
         return s.toUpperCase(Locale.ROOT).replace("'", "").replaceAll("[^A-Z0-9]+", "_").replaceAll("^_+|_+$", "");
     }
 
+    private static Map<String, String> idToName;
+
+    /** Reverse of our own name list: SKYBLOCK_ID -> name (first name wins). */
+    public static String nameForId(String id) {
+        if (idToName == null) {
+            Map<String, String> m = new HashMap<>();
+            for (var e : NAME_TO_ID.entrySet()) m.putIfAbsent(e.getValue(), e.getKey());
+            m.put("MELON", "Melon Slice");
+            idToName = m;
+        }
+        return idToName.get(id);
+    }
+
     public static boolean isTracked(String itemName) { return idFor(itemName) != null; }
 
     public static String cropFor(String blockPath) {

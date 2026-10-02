@@ -51,6 +51,30 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 6.2
+- **Profit fix**: taking items out of your sacks (e.g. crafting Enchanted Pumpkins from sacks) no longer counts as a loss,
+  and crops / ores leaving your inventory (compacting, moving to sacks) aren't listed as "Spent". Only Garden visitor
+  requests count as spent from sacks.
+- **Rare drops are shown once** (under Rare drops), not again in the item list.
+- **Item names** in the flipper fixed: "Dragon Essence", "Sharpness VII", "Kada Knight Shard", "Jar of Sand"...
+- **Pests**: fire particles on every pest you can see, a short trail toward them, and a list with arrows, distance and
+  the plots with pests (Farming settings).
+- **/greenhouse**: pick a mutation (all of them, from the wiki's table), see what you need to unlock first and in what
+  order, then plant it: look at the empty plot in your greenhouse and markers show what goes where, plus a grid on the HUD
+  that turns with you. Mutations you hold or see in a menu are marked as unlocked automatically (or press "I have it").
+- **/flips**: new tabs **Craft → Bazaar** (e.g. Enchanted Diamonds → Enchanted Diamond Block, with volume and profit/h)
+  and **Craft → AH** (armor, weapons... sold at lowest BIN). Shortcuts: `/flips craft`, `/flips craftah`.
+- **/shards**: cheapest attribute levels to buy next (or to max), using the wiki's shards-per-level table and your levels
+  from the Attribute Menu.
+- **/talismans**: NPC-shop accessories now have a price; **Other ways** lists the ones you can't buy (quests, drops,
+  events) with how to get them and a wiki link.
+- **Inventory search**: a box under every inventory / chest / menu. Type, and matching items (name or description) are
+  highlighted, everything else is dimmed.
+- **/profit history**: new first tab with profit **today, yesterday, this week, last 7 days, this month, last 30 days and
+  all time** (Bazaar flips included; hover a row for the split by activity).
+- **/dungeon**: this run's secrets (yours and the team's), crypts, deaths, rooms, time, milestone, puzzles and team, plus
+  past runs with averages. `/dungeon secrets` for a quick line in chat.
+
 ## New in 6.0 — SkyAssist
 The mod is now called **SkyAssist** (it does a lot more than profit now). The jar is `skyassist-…jar`, settings live in
 `config/skyassist` (your old `config/farmprofit` folder is moved over automatically the first time, so nothing is lost),

@@ -13,6 +13,7 @@ import java.util.List;
 /** /talismans as a menu: the cheapest Magical Power you don't have yet, with buttons to search the AH or see the recipe. */
 public final class TalismansScreen extends Screen {
     private static int count = 10;
+    private static boolean showOther;
     private int page;
     private List<Accessories.Pick> picks = List.of();
 
@@ -56,6 +57,10 @@ public final class TalismansScreen extends Screen {
         max.setValue(cfg.talismanMaxPrice > 0 ? Fmt.coins(cfg.talismanMaxPrice).replace(",", "") : "");
         max.setTooltip(Tooltip.create(Component.literal("Skip accessories above this price, e.g. 5m or 500k. Empty = no limit. Press Refresh to apply.")));
         addRenderableWidget(max);
+        Button other = Button.builder(Component.literal(showOther ? "§eOther ways" : "Other ways"), b -> { showOther = !showOther; page = 0; rebuildWidgets(); })
+                .bounds(left + 408, cy, 74, 18).build();
+        other.setTooltip(Tooltip.create(Component.literal("Accessories you can't buy or craft: quests, drops, events, collections. Shows how to get them.")));
+        addRenderableWidget(other);
         addRenderableWidget(Button.builder(Component.literal("Refresh"), b -> {
             double v = FlipsCommand.parseAmount(max.getValue().isBlank() ? "0" : max.getValue());
             if (!Double.isNaN(v)) { cfg.talismanMaxPrice = Math.max(0, v); Config.save(); }
@@ -73,6 +78,7 @@ public final class TalismansScreen extends Screen {
             return;
         }
         picks = Accessories.recommend(count);
+        if (showOther) { otherList(left, right, top, rowH, bottom); return; }
         if (picks.isEmpty()) {
             addRenderableWidget(new StringWidget(left, top, 400, 10, Component.literal("§7Nothing found with a price (check the max price)."), font));
             footer(left, right);
@@ -97,10 +103,12 @@ public final class TalismansScreen extends Screen {
             addRenderableWidget(new StringWidget(left + 175, ry + 5, 50, 10, Component.literal("§a+" + p.gain() + " MP"), font));
             addRenderableWidget(new StringWidget(left + 228, ry + 5, 70, 10, Component.literal("§6" + Fmt.coins(p.cost())), font));
             addRenderableWidget(new StringWidget(left + 300, ry + 5, 70, 10, Component.literal("§8" + Fmt.coins(p.cost() / p.gain()) + "/MP"), font));
-            boolean ah = p.source().equals("AH");
-            Button go = Button.builder(Component.literal(ah ? "§eAH" : "§bRecipe"), b -> run((ah ? "ahs " : "recipe ") + p.item().name()))
-                    .bounds(right - 60, ry, 60, 20).build();
+            boolean ah = p.source().equals("AH"), npc = p.source().equals("NPC");
+            Button go = Button.builder(Component.literal(ah ? "§eAH" : npc ? "§dNPC" : "§bRecipe"), b -> {
+                        if (npc) { onClose(); wiki(p.item().name()); } else run((ah ? "ahs " : "recipe ") + p.item().name());
+                    }).bounds(right - 60, ry, 60, 20).build();
             go.setTooltip(Tooltip.create(Component.literal(ah ? "Lowest BIN " + Fmt.coins(p.cost()) + ". Opens an Auction House search."
+                    : npc ? "Sold by an NPC for about " + Fmt.coins(p.cost()) + ". Click for the wiki page (which NPC)."
                     : "Craft cost " + Fmt.coins(p.cost()) + " (ingredients bought). Opens the recipe.")));
             addRenderableWidget(go);
         }
@@ -115,6 +123,40 @@ public final class TalismansScreen extends Screen {
             addRenderableWidget(Button.builder(Component.literal(">"), b -> { page++; rebuildWidgets(); }).bounds(right - 52, by - 4, 20, 18).build()).active = page < pages - 1;
         }
         footer(left, right);
+    }
+
+    /** Accessories without a price: how to get them, with a wiki link. Sorted by Magical Power. */
+    private void otherList(int left, int right, int top, int rowH, int bottom) {
+        List<Accessories.Pick> other = Accessories.unbuyable;
+        int perPage = Math.max(1, (bottom - top) / rowH);
+        int pages = Math.max(1, (other.size() + perPage - 1) / perPage);
+        page = Math.max(0, Math.min(page, pages - 1));
+        if (other.isEmpty()) addRenderableWidget(new StringWidget(left, top, 400, 10, Component.literal("§7Nothing missing that can't be bought."), font));
+        int row = 0;
+        for (int i = page * perPage; i < Math.min(other.size(), (page + 1) * perPage); i++, row++) {
+            Accessories.Pick p = other.get(i);
+            int ry = top + row * rowH;
+            String hint = CraftCost.HINTS.getOrDefault(p.item().id(), "quest, drop, event or collection reward");
+            StringWidget nameW = new StringWidget(left, ry + 5, 170, 10, Component.literal(color(p.item().rarity()) + p.item().name()), font);
+            nameW.setTooltip(Tooltip.create(Component.literal(color(p.item().rarity()) + p.item().name() + "\n§7+" + p.gain() + " MP\n§7" + hint)));
+            addRenderableWidget(nameW);
+            addRenderableWidget(new StringWidget(left + 175, ry + 5, 50, 10, Component.literal("§a+" + p.gain() + " MP"), font));
+            addRenderableWidget(new StringWidget(left + 228, ry + 5, right - left - 300, 10, Component.literal("§7" + hint), font));
+            addRenderableWidget(Button.builder(Component.literal("Wiki"), b -> { onClose(); wiki(p.item().name()); }).bounds(right - 60, ry, 60, 20).build());
+        }
+        int by = height - 44;
+        addRenderableWidget(new StringWidget(left, by, 400, 10, Component.literal("§7" + other.size() + " accessories you don't have that can't be bought or crafted."), font));
+        if (pages > 1) {
+            addRenderableWidget(Button.builder(Component.literal("<"), b -> { page--; rebuildWidgets(); }).bounds(right - 110, by - 4, 20, 18).build()).active = page > 0;
+            addRenderableWidget(new StringWidget(right - 86, by, 30, 10, Component.literal("§7" + (page + 1) + "/" + pages), font));
+            addRenderableWidget(Button.builder(Component.literal(">"), b -> { page++; rebuildWidgets(); }).bounds(right - 52, by - 4, 20, 18).build()).active = page < pages - 1;
+        }
+        footer(left, right);
+    }
+
+    private static void wiki(String name) {
+        String url = "https://hypixelskyblock.minecraft.wiki/w/" + name.replace(' ', '_');
+        Tracker.say(Chat.link("§6[Talismans] §f" + name + " §7on the wiki: §a§n[open]", url));
     }
 
     private void footer(int left, int right) {

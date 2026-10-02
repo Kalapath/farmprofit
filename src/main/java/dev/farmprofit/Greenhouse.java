@@ -1,0 +1,318 @@
+package dev.farmprofit;
+
+import com.google.gson.reflect.TypeToken;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+import dev.farmprofit.MenuScreen.Action;
+import dev.farmprofit.MenuScreen.Page;
+import dev.farmprofit.MenuScreen.Row;
+import dev.farmprofit.MenuScreen.Tab;
+
+/**
+ * Greenhouse helper (/greenhouse): pick a mutation, see what you need first, and get a layout to plant.
+ * Requirements are from the Hypixel SkyBlock Wiki's mutation table (crops needed around an empty plot).
+ */
+public final class Greenhouse {
+    /** A mutation: what it needs around the empty plot it grows on, and the block that plot must be. */
+    public record Mutation(String name, String rarity, String surface, int size, LinkedHashMap<String, Integer> needs, String special) {}
+
+    /** Things you plant yourself (not mutations). */
+    private static final Set<String> BASE = Set.of("Wheat", "Carrot", "Potato", "Pumpkin", "Melon", "Sugar Cane", "Cactus",
+            "Cocoa Beans", "Nether Wart", "Red Mushroom", "Brown Mushroom", "Moonflower", "Sunflower", "Wild Rose",
+            "Fermento", "Dead Plant", "Fire");
+
+    public static final Map<String, Mutation> ALL = new LinkedHashMap<>();
+
+    private static void m(String name, String rarity, String surface, int size, Object... needs) {
+        LinkedHashMap<String, Integer> map = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < needs.length; i += 2) map.put((String) needs[i], (Integer) needs[i + 1]);
+        ALL.put(name, new Mutation(name, rarity, surface, size, map, null));
+    }
+
+    static {
+        // COMMON
+        m("Ashwreath", "COMMON", "Soul Sand", 1, "Nether Wart", 2, "Fire", 2);
+        m("Choconut", "COMMON", "Farmland", 1, "Cocoa Beans", 2);
+        m("Dustgrain", "COMMON", "Farmland", 1, "Wheat", 2);
+        m("Gloomgourd", "COMMON", "Farmland", 1, "Pumpkin", 1, "Melon", 1);
+        m("Lonelily", "COMMON", "Farmland or Dirt", 1);                                  // needs NO crops around it
+        m("Scourroot", "COMMON", "Farmland", 1, "Potato", 1, "Carrot", 1);
+        m("Shadevine", "COMMON", "Farmland", 1, "Cactus", 1, "Sugar Cane", 1);
+        m("Veilshroom", "COMMON", "Mycelium", 1, "Red Mushroom", 1, "Brown Mushroom", 1);
+        m("Witherbloom", "COMMON", "Soul Sand", 1, "Dead Plant", 4);
+        // UNCOMMON
+        m("Chocoberry", "UNCOMMON", "Farmland", 1, "Choconut", 6, "Gloomgourd", 2);
+        m("Cindershade", "UNCOMMON", "Soul Sand", 1, "Ashwreath", 4, "Witherbloom", 4);
+        m("Coalroot", "UNCOMMON", "Farmland", 1, "Ashwreath", 5, "Scourroot", 3);
+        m("Creambloom", "UNCOMMON", "Farmland", 1, "Choconut", 8);
+        m("Duskbloom", "UNCOMMON", "Farmland", 1, "Moonflower", 2, "Shadevine", 2, "Sunflower", 2, "Dustgrain", 2);
+        m("Thornshade", "UNCOMMON", "Farmland", 1, "Wild Rose", 4, "Veilshroom", 4);
+        // RARE
+        m("Blastberry", "RARE", "Sand", 1, "Chocoberry", 5, "Ashwreath", 3);
+        m("Cheesebite", "RARE", "Farmland", 1, "Creambloom", 4, "Fermento", 4);
+        m("Chloronite", "RARE", "Farmland", 1, "Coalroot", 6, "Thornshade", 2);
+        m("Do-not-eat-shroom", "RARE", "Farmland", 1, "Veilshroom", 4, "Scourroot", 4);
+        m("Fleshtrap", "RARE", "Farmland", 1, "Cindershade", 4, "Lonelily", 4);
+        m("Magic Jellybean", "RARE", "Sand", 1, "Sugar Cane", 5, "Duskbloom", 3);
+        m("Noctilume", "RARE", "Farmland", 2, "Duskbloom", 6, "Lonelily", 6);
+        m("Snoozling", "RARE", "Farmland", 3, "Creambloom", 4, "Dustgrain", 3, "Witherbloom", 3, "Duskbloom", 3, "Thornshade", 3);
+        m("Soggybud", "RARE", "Farmland", 1, "Melon", 2, "Gloomgourd", 2);
+        m("Turtlellini", "RARE", "Farmland", 1, "Soggybud", 4, "Choconut", 4);
+        // EPIC
+        m("Chorus Fruit", "EPIC", "End Stone", 1, "Chloronite", 5, "Magic Jellybean", 3);
+        m("PlantBoy Advance", "EPIC", "Farmland", 2, "Snoozling", 6, "Thunderling", 6);
+        m("Puffercloud", "EPIC", "Farmland", 1, "Snoozling", 2, "Do-not-eat-shroom", 6);
+        ALL.put("Shellfruit", new Mutation("Shellfruit", "EPIC", "Farmland", 1, new LinkedHashMap<>(Map.of("Turtlellini", 1, "Blastberry", 1)),
+                "Explode a Turtlellini with a Blastberry."));
+        m("Startlevine", "EPIC", "Farmland", 1, "Blastberry", 4, "Cheesebite", 4);
+        m("Stoplight Petal", "EPIC", "Farmland", 1, "Snoozling", 4, "Noctilume", 4);
+        m("Thunderling", "EPIC", "Farmland", 1, "Soggybud", 5, "Noctilume", 3);
+        m("Zombud", "EPIC", "Soul Sand", 1, "Dead Plant", 4, "Cindershade", 2, "Fleshtrap", 2);
+        // LEGENDARY
+        m("All-in Aloe", "LEGENDARY", "Sand", 1, "Magic Jellybean", 6, "PlantBoy Advance", 2);
+    }
+
+    // ---------------- which ones you have ----------------
+
+    private static final Path FILE = Config.DIR.resolve("greenhouse.json");
+    private static Set<String> have;
+    private static String target;
+
+    public static Set<String> have() {
+        if (have == null) {
+            try {
+                if (Files.exists(FILE)) {
+                    Map<String, Object> m = Config.GSON.fromJson(Files.readString(FILE), new TypeToken<Map<String, Object>>() {}.getType());
+                    have = new LinkedHashSet<>();
+                    if (m.get("have") instanceof List<?> l) for (Object o : l) have.add(String.valueOf(o));
+                    if (m.get("target") instanceof String t) target = t;
+                }
+            } catch (Exception ignored) {}
+            if (have == null) have = new LinkedHashSet<>();
+        }
+        return have;
+    }
+
+    private static void save() {
+        try {
+            Files.createDirectories(Config.DIR);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("have", new ArrayList<>(have()));
+            m.put("target", target);
+            Files.writeString(FILE, Config.GSON.toJson(m));
+        } catch (Exception ignored) {}
+    }
+
+    /** Mutations seen in your inventory or in any menu (Mutations Sack, Crop Analyzer...) count as unlocked. */
+    static void noticeItems(List<ItemStack> items) {
+        boolean changed = false;
+        for (ItemStack is : items) {
+            String n = Tracker.strip(is.getHoverName().getString()).replaceAll("^\\d+x ", "").trim();
+            if (ALL.containsKey(n) && have().add(n)) changed = true;
+        }
+        if (changed) save();
+    }
+
+    public static boolean has(String name) { return BASE.contains(name) || have().contains(name); }
+
+    /** Everything you still need to unlock first (deepest first), for one mutation. */
+    public static List<String> missingChain(String name) {
+        List<String> out = new ArrayList<>();
+        collect(name, out, new HashSet<>());
+        out.remove(name);
+        return out;
+    }
+
+    private static void collect(String name, List<String> out, Set<String> seen) {
+        if (!seen.add(name)) return;
+        Mutation m = ALL.get(name);
+        if (m == null) return;
+        for (String need : m.needs().keySet()) if (!has(need)) collect(need, out, seen);
+        if (!has(name) && !out.contains(name)) out.add(name);
+    }
+
+    // ---------------- the layout ----------------
+
+    /** 1x1: the 8 blocks around the center, filled N, S, W, E first, then corners. */
+    private static final int[][] RING_1 = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}};
+
+    /** Cells around the center (in x/z offsets) and what to plant on each. */
+    public static List<Object[]> layout(Mutation m) {
+        List<Object[]> out = new ArrayList<>();
+        List<int[]> ring = new ArrayList<>();
+        if (m.size() == 1) for (int[] r : RING_1) ring.add(r);
+        else {
+            int s = m.size();                                   // a 2x2 / 3x3 mutation: the ring of blocks around it
+            for (int x = -1; x <= s; x++) for (int z = -1; z <= s; z++) {
+                boolean inside = x >= 0 && x < s && z >= 0 && z < s;
+                if (!inside) ring.add(new int[]{x, z});
+            }
+        }
+        int i = 0;
+        for (var e : m.needs().entrySet()) {
+            for (int k = 0; k < e.getValue() && i < ring.size(); k++, i++) out.add(new Object[]{ring.get(i)[0], ring.get(i)[1], e.getKey()});
+        }
+        return out;
+    }
+
+    private static String shortName(String s) {
+        String[] w = s.replace("-", " ").split(" ");
+        return w.length == 1 ? s.substring(0, Math.min(5, s.length())) : (w[0].substring(0, Math.min(3, w[0].length())) + w[1].substring(0, Math.min(2, w[1].length())));
+    }
+
+    // ---------------- in-world guide ----------------
+
+    private static int tick;
+
+    /** While a target is set and you're in the Garden: the block you look at is the empty plot; marks what goes where. */
+    public static void tick(Minecraft mc) {
+        if (target == null || !Config.get().greenhouseGuide || mc.player == null || mc.level == null || !Tracker.FARMING.equals(Tracker.area)) return;
+        if (++tick % 8 != 0) return;
+        Mutation m = ALL.get(target);
+        if (m == null) return;
+        if (!(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
+        BlockPos c = hit.getBlockPos();
+        double y = c.getY() + 1.2;
+        for (int dx = 0; dx < m.size(); dx++) for (int dz = 0; dz < m.size(); dz++) {
+            Particles.pillar(Particles.WHITE, c.getX() + dx + 0.5, y, c.getZ() + dz + 0.5);     // leave empty (the mutation grows here)
+        }
+        var colors = new LinkedHashMap<String, net.minecraft.core.particles.ParticleOptions>();
+        int ci = 0;
+        for (String need : m.needs().keySet()) colors.put(need, Particles.PAIRS[ci++ % Particles.PAIRS.length]);
+        for (Object[] cell : layout(m)) {
+            Particles.point(colors.get((String) cell[2]), c.getX() + (int) cell[0] + 0.5, y, c.getZ() + (int) cell[1] + 0.5);
+            Particles.point(colors.get((String) cell[2]), c.getX() + (int) cell[0] + 0.5, y + 0.4, c.getZ() + (int) cell[1] + 0.5);
+        }
+    }
+
+    /** HUD panel: what to plant, as a grid that turns with you (top row = in front of the plot). */
+    public static void addHudLines(Hud.Lines out) {
+        if (target == null || !Config.get().greenhouseGuide || !Tracker.FARMING.equals(Tracker.area)) return;
+        Mutation m = ALL.get(target);
+        if (m == null) return;
+        out.add("§a§lGreenhouse §7→ §f" + m.name() + " §8(on " + m.surface() + ")");
+        if (m.special() != null) { out.add(" §7" + m.special()); return; }
+        if (m.needs().isEmpty()) { out.add(" §7Plant nothing around it (it likes being alone)."); return; }
+        int ci = 0;
+        String[] codes = {"§a", "§6", "§f", "§b"};
+        StringBuilder legend = new StringBuilder(" ");
+        for (var e : m.needs().entrySet()) legend.append(codes[ci++ % codes.length]).append("● ").append(e.getValue()).append("x ").append(e.getKey()).append("  ");
+        out.add(legend.toString().trim().isEmpty() ? "" : legend.toString());
+        if (m.size() == 1) {
+            // a 3x3 grid rotated to where you look
+            Minecraft mc = Minecraft.getInstance();
+            float yaw = mc.player != null ? mc.player.getYRot() : 0;
+            int rot = Math.floorMod(Math.round(yaw / 90f), 4);      // 0=south, 1=west, 2=north, 3=east
+            String[][] grid = new String[3][3];
+            for (String[] row : grid) java.util.Arrays.fill(row, "§8 · ");
+            grid[1][1] = "§f§l ✦ ";
+            Map<String, String> col = new LinkedHashMap<>();
+            ci = 0;
+            for (String need : m.needs().keySet()) col.put(need, codes[ci++ % codes.length]);
+            for (Object[] cell : layout(m)) {
+                int dx = (int) cell[0], dz = (int) cell[1];
+                int sx = dx, sz = dz;                              // turn so "up" on screen is the way you face
+                for (int r = 0; r < (rot + 2) % 4; r++) { int t = sx; sx = -sz; sz = t; }
+                grid[sz + 1][sx + 1] = col.get((String) cell[2]) + shortName((String) cell[2]);
+            }
+            for (String[] row : grid) out.add("  " + String.join(" ", row));
+            out.add(" §8✦ = leave empty (look at it to see markers)");
+        } else {
+            out.add(" §7" + m.size() + "x" + m.size() + " mutation: leave a " + m.size() + "x" + m.size() + " empty area, plant the crops in the ring around it.");
+        }
+    }
+
+    // ---------------- menu ----------------
+
+    public static Screen screen(Screen parent) {
+        final MenuScreen[] ref = new MenuScreen[1];
+        List<Tab> tabs = new ArrayList<>();
+        tabs.add(new Tab("Plan", () -> planPage(ref)));
+        for (String r : new String[]{"COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY"}) tabs.add(new Tab(cap(r), () -> listPage(r, ref)));
+        ref[0] = new MenuScreen("Greenhouse helper", tabs, target == null ? 1 : 0, parent);
+        return ref[0];
+    }
+
+    private static String cap(String s) { return s.charAt(0) + s.substring(1).toLowerCase(Locale.ROOT); }
+
+    private static Page listPage(String rarity, MenuScreen[] ref) {
+        List<Row> rows = new ArrayList<>();
+        for (Mutation m : ALL.values()) {
+            if (!m.rarity().equals(rarity)) continue;
+            List<String> missing = missingChain(m.name());
+            String state = has(m.name()) ? "§a✔ have" : missing.isEmpty() ? "§e can make" : "§c needs " + missing.size() + " first";
+            StringBuilder needs = new StringBuilder();
+            for (var e : m.needs().entrySet()) needs.append(has(e.getKey()) ? "§7" : "§c").append(e.getValue()).append(" ").append(e.getKey()).append("§8, ");
+            String req = m.special() != null ? "§7" + m.special() : m.needs().isEmpty() ? "§7nothing around it" : needs.substring(0, needs.length() - 4);
+            List<Action> buttons = new ArrayList<>();
+            buttons.add(new Action(m.name().equals(target) ? "§a§lPlanned" : "Plan", "Show the layout for " + m.name() + " (in the Plan tab, the HUD and the world).", () -> {
+                target = m.name();
+                save();
+                ref[0].refresh();
+            }));
+            buttons.add(new Action(has(m.name()) ? "§8Unmark" : "§8I have it", "Mark whether you've unlocked " + m.name()
+                    + ". (Ones you hold or see in a menu are marked automatically.)", () -> {
+                if (!have().remove(m.name())) have().add(m.name());
+                save();
+                ref[0].refresh();
+            }));
+            rows.add(new Row(new String[]{"§f" + m.name(), state, req}, "§7Grows on: §f" + m.surface() + (m.size() > 1 ? "\n§7Size: " + m.size() + "x" + m.size() : ""), buttons));
+        }
+        return new Page(new String[]{"Mutation", "Status", "Needs around it"}, new int[]{110, 90, 230}, rows, List.of(),
+                List.of("§8Red = you don't have that one yet. Requirements: Hypixel SkyBlock Wiki."));
+    }
+
+    private static Page planPage(MenuScreen[] ref) {
+        List<Row> rows = new ArrayList<>();
+        List<String> footer = new ArrayList<>();
+        List<Action> top = new ArrayList<>();
+        if (target == null || !ALL.containsKey(target)) {
+            footer.add("§7Pick a mutation in one of the rarity tabs (Plan button).");
+            return new Page(new String[]{""}, new int[]{400}, rows, top, footer);
+        }
+        Mutation m = ALL.get(target);
+        top.add(new Action("Stop guide", "Turns off the layout markers and HUD panel.", () -> { target = null; save(); ref[0].refresh(); }));
+        List<String> chain = missingChain(m.name());
+        if (has(m.name())) rows.add(new Row("§a✔ You already have " + m.name() + "."));
+        if (!chain.isEmpty()) {
+            rows.add(new Row("§eGet these first, in this order:"));
+            int i = 1;
+            for (String step : chain) {
+                if (step.equals(m.name())) continue;
+                Mutation sm = ALL.get(step);
+                rows.add(new Row(new String[]{"§f" + i++ + ". " + step, sm == null ? "" : "§7on " + sm.surface() + ", needs " + needsText(sm)}, null,
+                        List.of(new Action("Plan this", "Switch the guide to " + step, () -> { target = step; save(); ref[0].refresh(); }))));
+            }
+        }
+        rows.add(new Row("§a§l" + m.name() + " §7(" + cap(m.rarity()) + ", grows on §f" + m.surface() + "§7)"));
+        rows.add(new Row("§7Around the empty plot: " + (m.special() != null ? m.special() : needsText(m))));
+        footer.add("§7In the Garden, look at the empty " + m.surface() + " block: white = leave empty, colored = what to plant there.");
+        footer.add("§8The HUD shows the same layout as a grid that turns with you.");
+        return new Page(new String[]{"", ""}, new int[]{170, 260}, rows, top, footer);
+    }
+
+    private static String needsText(Mutation m) {
+        if (m.needs().isEmpty()) return "nothing (keep it alone)";
+        List<String> parts = new ArrayList<>();
+        m.needs().forEach((k, v) -> parts.add(v + " " + k));
+        return String.join(", ", parts);
+    }
+
+    private Greenhouse() {}
+}

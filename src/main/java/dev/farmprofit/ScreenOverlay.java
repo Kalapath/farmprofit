@@ -31,6 +31,7 @@ final class ScreenOverlay {
                     }
                     if (args != null && args.length >= 2) {
                         try { Terminals.draw(args[0], args[1]); } catch (Throwable ignored) {}
+                        try { InvSearch.draw(args[0], args[1]); } catch (Throwable ignored) {}
                     }
                     return null;
                 });

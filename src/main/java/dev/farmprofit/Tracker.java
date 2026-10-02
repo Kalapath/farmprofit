@@ -78,6 +78,10 @@ public final class Tracker {
     public static final Map<String, Session> sessions = new LinkedHashMap<>();
     public static final Map<String, String> tab = new HashMap<>();
     public static final List<String> commissions = new ArrayList<>();
+    /** Every tab-list line as plain text (in order). */
+    public static volatile List<String> tabLines = new ArrayList<>();
+    /** Every sidebar (scoreboard) line as plain text. */
+    public static volatile List<String> sidebarLines = new ArrayList<>();
     /** MINING, FORAGING, FARMING (Garden) or null, based on the tab-list Area. */
     public static String area;
     /** Raw "Area:" name from the tab list. */
@@ -320,6 +324,8 @@ public final class Tracker {
         Enchants.tick();
         CraftCost.tick();
         WorldPuzzles.tick(mc);
+        Pests.tick(mc);
+        Greenhouse.tick(mc);
         WorldPuzzles.quizTick();
         Calc.tick(mc);
 
@@ -350,6 +356,9 @@ public final class Tracker {
             // Only losses: you used it up (potion, arrows, a visitor's request) -> "Spent".
             for (var d : deltas.entrySet()) {
                 if (anyGain || d.getValue() > 0) target.addItem(d.getKey(), d.getValue());
+                // the crops / ores themselves (and their enchanted forms) leaving the inventory are moved, crafted
+                // or put in sacks, not used up: keep them as a negative amount instead of "Spent"
+                else if (Items.isTracked(d.getKey())) target.addItem(d.getKey(), d.getValue());
                 else target.addSpent(d.getKey(), -d.getValue());
             }
             if (anyGain && inMenu) Menus.onGainedInMenu(target);
@@ -449,6 +458,8 @@ public final class Tracker {
             Object objective = Reflect.call(sb, "getDisplayObjective", sidebar);
             Object entries = Reflect.call(sb, new String[]{"listPlayerScores"}, objective);
             if (!(entries instanceof java.util.Collection<?> list)) return;
+            List<String> side = new ArrayList<>();
+            sidebarLines = side;
             for (Object e : list) {
                 Object owner = Reflect.call(e, new String[]{"owner", "getOwner"});
                 if (!(owner instanceof String name)) continue;
@@ -456,6 +467,7 @@ public final class Tracker {
                 String prefix = team == Reflect.FAIL || team == null ? "" : text(Reflect.call(team, "getPlayerPrefix"));
                 String suffix = team == Reflect.FAIL || team == null ? "" : text(Reflect.call(team, "getPlayerSuffix"));
                 String line = strip(prefix + name + suffix);
+                side.add(line.trim());
                 Matcher fl = FLOOR.matcher(line);
                 if (fl.find()) dungeonFloor = fl.group(1);
                 Matcher m = PURSE.matcher(line);
@@ -501,16 +513,19 @@ public final class Tracker {
         if (conn == null) return;
         tab.clear();
         commissions.clear();
+        List<String> lines = new ArrayList<>();
         for (var info : conn.getListedOnlinePlayers()) {
             Component dn = info.getTabListDisplayName();
             if (dn == null) continue;
             String line = strip(dn.getString());
+            lines.add(line.trim());
             Matcher c = COMMISSION.matcher(line);
             if (c.matches()) commissions.add(c.group(1).trim() + ": " + c.group(2));
             Matcher m = TAB_STAT.matcher(line);
             if (m.matches()) tab.putIfAbsent(m.group(1).trim(), m.group(2).trim());
         }
 
+        tabLines = lines;
         String a = tab.get("Area");
         areaName = a != null ? a : HypixelLocation.map;
         area = null;
@@ -655,6 +670,7 @@ public final class Tracker {
             Debug.saw("dungeon score");
             s.runs++;
             s.lastScore = sc.group(1) + " (" + sc.group(2) + ")";
+            Dungeon.recordRun(sc.group(1), sc.group(2));
             if (dungeonFloor != null) s.floor = dungeonFloor;
             lastRunEnd = System.currentTimeMillis();
             return;
@@ -725,6 +741,14 @@ public final class Tracker {
                 Matcher m = SACK_LINE.matcher(line);
                 if (!m.matches()) continue;
                 long amount = Long.parseLong(m.group(1).replace(",", "").replace("+", ""));
+                if (amount < 0) {
+                    // Taking items out of sacks (crafting enchanted versions, using them) isn't a loss:
+                    // the crafted result appears in a menu, which isn't counted. Only visitor requests cost you.
+                    if (System.currentTimeMillis() - Visitors.lastAccepted < 10_000 && sessions.containsKey(FARMING)) {
+                        sessions.get(FARMING).addSpent(m.group(2).trim(), -amount);
+                    }
+                    continue;
+                }
                 target.addItem(m.group(2).trim(), amount);
             }
         }

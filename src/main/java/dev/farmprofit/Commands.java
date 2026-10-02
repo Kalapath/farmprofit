@@ -30,7 +30,7 @@ public final class Commands {
         add("Main", "/profit settings", "All settings, with search (also the O key or /profitsettings).");
         add("Main", "/profit", "Current session: items, profit, costs (menu).");
         add("Main", "/profit chat", "Current session printed in chat.");
-        add("Main", "/profit history", "Past sessions by activity (menu).");
+        add("Main", "/profit history", "Profit today / this week / this month, and past sessions by activity (menu).");
         add("Main", "/profit history chat", "Last 10 sessions in chat.");
         add("Main", "/profit total", "Lifetime totals per activity (menu).");
         add("Main", "/profit suggest", "Best crop / ore to farm right now (menu).");
@@ -60,13 +60,25 @@ public final class Commands {
         add("Bazaar", "/flips plan", "Splits your budget over the best safe flips (menu).");
         add("Bazaar", "/flips orders", "Your tracked orders and whether you're outbid / undercut (menu).");
         add("Bazaar", "/flips log", "Profit from your finished flips (menu).");
+        add("Bazaar", "/flips craft", "Buy ingredients, craft, sell on the Bazaar for more (menu).");
+        add("Bazaar", "/flips craftah", "Buy ingredients, craft, sell on the Auction House (armor, weapons...) (menu).");
         add("Bazaar", "/flips remove <number>", "Removes a stale order from the list.");
         add("Bazaar", "/flips clear", "Clears the order list (the profit log stays).");
         add("Bazaar", "/flips hud", "Orders panel on the HUD on or off.");
         add("Bazaar", "/flips settings", "Flip settings (budget, tax, volume...).");
         add("Bazaar", "/flips set <setting> <value>", "Change one flip setting, e.g. /flips set budget 25m.");
 
-        add("Tools", "/talismans", "Cheapest Magical Power you don't have yet (menu).");
+        add("Dungeons", "/dungeon", "This run: secrets, crypts, deaths, rooms, time, milestone (menu).");
+        add("Dungeons", "/dungeon chat", "This run's info in chat.");
+        add("Dungeons", "/dungeon secrets", "Your secrets, team secrets % and this room's count in chat.");
+        add("Dungeons", "/dungeon puzzles", "Which puzzles are done, failed or still to do (menu).");
+        add("Dungeons", "/dungeon team", "Your team and their classes (menu).");
+        add("Dungeons", "/dungeon runs", "Past runs with score, time, secrets, crypts and deaths (menu).");
+        add("Dungeons", "/dungeonprofit", "Dungeon profit: runs per hour, profit per run (menu).");
+        add("Tools", "/talismans", "Cheapest Magical Power you don't have yet (menu); \"Other ways\" lists quest / drop ones.");
+        add("Tools", "/shards", "Cheapest attribute levels to buy next, or to max (menu).");
+        add("Tools", "/greenhouse", "Pick a mutation: what to unlock first, and a planting layout in the world (menu).");
+        add("Tools", "Search box under any inventory", "Type to highlight matching items (name or description).");
         add("Tools", "/talismans chat", "The same list in chat.");
         add("Tools", "/calc <sum>", "Calculator: 64x8, 10m/3, (2.5k+500)*4. Copies the result.");
         add("Tools", "In a Bazaar / AH sign: 64x8=", "Type a sum ending in = and it becomes the number.");

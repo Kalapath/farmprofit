@@ -38,6 +38,8 @@ public final class Accessories {
 
     public static int count() { return ALL.size(); }
 
+    public static long scannedAt() { owned(); return scannedAt; }
+
     static int mpFor(String rarity) {
         return switch (rarity) {
             case "COMMON", "SPECIAL" -> 3;

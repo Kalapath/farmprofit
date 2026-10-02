@@ -57,7 +57,7 @@ final class HudEditor {
                 if (!moved && dragging.id().equals("main") && hovered != null && hovered[1] == 0) {
                     Config.get().hudShowTotal = !Config.get().hudShowTotal;
                     Config.save();
-                    Tracker.say("§6[Profit] §7All-time line " + (Config.get().hudShowTotal ? "§aon" : "§coff"));
+                    Tracker.say("§6[SkyAssist] §7All-time line " + (Config.get().hudShowTotal ? "§aon" : "§coff"));
                 }
                 dragging = null;
                 Panels.save();
@@ -82,13 +82,13 @@ final class HudEditor {
                 if (!cfg.ignoredItems.contains(item)) {
                     cfg.ignoredItems.add(item);
                     Config.save();
-                    Tracker.say("§6[Profit] §7Hidden §f" + item + "§7 (not counted). Undo in Settings → Hidden items.");
+                    Tracker.say("§6[SkyAssist] §7Hidden §f" + item + "§7 (not counted). Undo in Settings → Hidden items.");
                 }
             } else if (hovered[1] == 0) {
                 Panels.Pos p = Panels.get(box.key());
                 p.hidden = !p.hidden;
                 Panels.save();
-                Tracker.say("§6[Profit] §f" + Panels.title(box.id()) + " §7" + (p.hidden ? "hidden (/profit gui to show it again)" : "shown"));
+                Tracker.say("§6[SkyAssist] §f" + Panels.title(box.id()) + " §7" + (p.hidden ? "hidden (/profit gui to show it again)" : "shown"));
             }
         }
 

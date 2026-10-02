@@ -17,7 +17,7 @@ public final class UpdateCheck {
     static volatile String message, link;
 
     public static String thisCommit() {
-        try (InputStream in = UpdateCheck.class.getResourceAsStream("/farmprofit-build.txt")) {
+        try (InputStream in = UpdateCheck.class.getResourceAsStream("/skyassist-build.txt")) {
             if (in == null) return "dev";
             String s = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
             return s.isEmpty() || s.contains("$") ? "dev" : s;
@@ -31,7 +31,7 @@ public final class UpdateCheck {
         String mine = thisCommit();
         if (mine.equals("dev")) return;
         String url = "https://api.github.com/repos/" + c.updateRepo.trim() + "/actions/runs?status=success&per_page=1";
-        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyBlockProfitCounter")
+        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyAssist")
                         .header("Accept", "application/vnd.github+json").timeout(Duration.ofSeconds(20)).GET().build(),
                         HttpResponse.BodyHandlers.ofString())
                 .thenAccept(r -> {
@@ -40,7 +40,7 @@ public final class UpdateCheck {
                     String sha = run.get("head_sha").getAsString();
                     if (!sha.equals(mine)) {
                         link = run.get("html_url").getAsString();
-                        message = "§6[Profit] §7A newer build of this mod is ready on GitHub. ";
+                        message = "§6[SkyAssist] §7A newer build of this mod is ready on GitHub. ";
                     }
                 })
                 .exceptionally(e -> null);

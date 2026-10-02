@@ -9,10 +9,18 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Settings saved in .minecraft/config/farmprofit/config.json */
+/** Settings saved in .minecraft/config/skyassist/config.json */
 public final class Config {
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    public static final Path DIR = FabricLoader.getInstance().getConfigDir().resolve("farmprofit");
+    public static final Path DIR = FabricLoader.getInstance().getConfigDir().resolve("skyassist");
+
+    static {
+        // the mod used to be called "farmprofit": move its folder (settings, history, flips...) over once
+        Path old = FabricLoader.getInstance().getConfigDir().resolve("farmprofit");
+        try {
+            if (java.nio.file.Files.isDirectory(old) && !java.nio.file.Files.exists(DIR)) java.nio.file.Files.move(old, DIR);
+        } catch (Exception ignored) {}
+    }
     private static final Path FILE = DIR.resolve("config.json");
     private static Config instance;
 
@@ -149,6 +157,8 @@ public final class Config {
     public String enchantGoodColor = "blue";
     @Setting(category = "Items & areas", label = "Low enchant color", desc = "Below the enchanting table maximum.", options = {"gold", "rainbow", "red", "light purple", "dark purple", "aqua", "green", "yellow", "blue", "gray", "dark gray", "white"})
     public String enchantPoorColor = "gray";
+    @Setting(category = "Items & areas", label = "Ultimate enchants stay pink", desc = "Ultimate enchantments keep Hypixel's bold pink at every level (the ✦ still shows when maxed). Off = colored by level like the others.")
+    public boolean ultimateKeepPink = true;
     @Setting(category = "Items & areas", label = "Mark maxed with ✦", desc = "Adds a ✦ after enchantments at their maximum level.")
     public boolean enchantMaxTag = true;
     @Setting(category = "Items & areas", label = "Enchant data URL", desc = "Where max levels come from (public SkyKings data). Empty = off.")
@@ -306,7 +316,7 @@ public final class Config {
     @Setting(category = "Combat & Slayers", label = "Slayer quest cost", desc = "Coins subtracted per slayer quest. 0 = detect automatically from your purse.", min = 0, max = 1000000000.0)
     public double slayerQuestCost = 0;
     /** Tab-list "Area:" names that count as mining. */
-    @Setting(category = "Mining", label = "Mining areas", desc = "Comma separated tab-list Area names that use the Mining HUD.")
+    @Setting(category = "Mining", label = "Extra mining areas", desc = "Comma separated. Dwarven Mines, Crystal Hollows, Mineshafts, Glacite Tunnels, Deep Caverns and Gold Mine are built in; add others here.")
     public java.util.List<String> miningAreas = new java.util.ArrayList<>(java.util.List.of(
             "Dwarven Mines", "Crystal Hollows", "Mineshaft", "Glacite", "Deep Caverns", "Gold Mine"));
     /** Lowest-BIN prices for auction-house items (rare drops). Set to "" to disable. */
@@ -325,7 +335,7 @@ public final class Config {
     @Setting(category = "Items & areas", label = "Extra log blocks", desc = "block_id=Wood Name, separated by commas.")
     public Map<String, String> extraLogBlocks = new HashMap<>();
     /** Tab-list "Area:" names that count as foraging islands. */
-    @Setting(category = "Foraging", label = "Foraging areas", desc = "Comma separated tab-list Area names that use the Foraging HUD.")
+    @Setting(category = "Foraging", label = "Extra foraging areas", desc = "Comma separated. The Park, Galatea, Moonglade Marsh and Torrhus Canyon are built in; add others here.")
     public java.util.List<String> foragingAreas = new java.util.ArrayList<>(java.util.List.of("Galatea", "The Park"));
 
     /** Whether the HUD for this activity is switched on. */

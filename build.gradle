@@ -24,7 +24,7 @@ processResources {
     inputs.property "minecraft_dep", project.minecraft_dep
     inputs.property "commit", (System.getenv("GITHUB_SHA") ?: "dev")
     filesMatching("fabric.mod.json") { expand "version": inputs.properties.version, "minecraft_dep": inputs.properties.minecraft_dep }
-    filesMatching("farmprofit-build.txt") { expand "commit": inputs.properties.commit }
+    filesMatching("skyassist-build.txt") { expand "commit": inputs.properties.commit }
 }
 
 tasks.withType(JavaCompile).configureEach { it.options.release = 25 }

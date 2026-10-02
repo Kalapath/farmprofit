@@ -63,7 +63,7 @@ public final class Dedupe {
         warned = true;
         List<Overlap> act = active();
         if (act.isEmpty()) return;
-        Tracker.say("§6[Profit] §7These features are also in other mods you have, so they may show twice:");
+        Tracker.say("§6[SkyAssist] §7These features are also in other mods you have, so they may show twice:");
         for (Overlap o : act) Tracker.say(" §f" + o.feature() + " §8(also in " + o.otherMod() + ")");
         Tracker.say(Chat.clickable("§a§l[Turn these off here]", "/profit dedupe", "Switches these off in this mod only. You can turn them back on in the settings."));
     }

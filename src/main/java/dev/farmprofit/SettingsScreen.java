@@ -36,7 +36,7 @@ public final class SettingsScreen extends Screen {
     public SettingsScreen() { this(null); }
 
     public SettingsScreen(Screen parent) {
-        super(Component.literal("Profit Counter Settings"));
+        super(Component.literal("SkyAssist Settings"));
         this.parent = parent;
     }
 
@@ -201,6 +201,10 @@ public final class SettingsScreen extends Screen {
             }).bounds(10, by, 100, 20).build()).setTooltip(Tooltip.create(Component.literal(
                     "Move, resize and hide each panel. Same as /profit gui.")));
         }
+        addRenderableWidget(Button.builder(Component.literal("Commands"), b -> {
+            applyPending();
+            Compat.setScreen(Minecraft.getInstance(), Commands.screen(this));
+        }).bounds(width - 90, by, 80, 20).build()).setTooltip(Tooltip.create(Component.literal("Every command with a short explanation.")));
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(width / 2 + 30, by, 80, 20).build());
     }
 
@@ -331,6 +335,8 @@ public final class SettingsScreen extends Screen {
     private static boolean openNextTick;
 
     public static void requestOpen() { openNextTick = true; }
+
+    public static void selectTab(String tab) { category = tab; query = ""; }
 
     public static void requestOpen(String tab) { category = tab; query = ""; openNextTick = true; }
 

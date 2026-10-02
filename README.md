@@ -1,4 +1,4 @@
-# SkyBlock Profit Counter (Hypixel SkyBlock, Fabric 26.1.2)
+# SkyAssist (Hypixel SkyBlock, Fabric 26.1.2)
 
 Tracks profit for **farming, mining, foraging, fishing and combat/slayers**, each with its own HUD.
 The HUD automatically shows whatever you did in the last minute (or the island you're on).
@@ -51,6 +51,40 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 6.0 — SkyAssist
+The mod is now called **SkyAssist** (it does a lot more than profit now). The jar is `skyassist-…jar`, settings live in
+`config/skyassist` (your old `config/farmprofit` folder is moved over automatically the first time, so nothing is lost),
+and the chat prefix is `[SkyAssist]`. `/skyassist` opens the main menu; all the `/profit…` and `/flips` commands still work.
+
+## New in 5.6
+- **Commands list**: `/profit help` (or the Commands button in Settings, or the main menu) shows every command with a
+  short explanation, grouped into tabs. **Run** runs it; **Type** opens chat with the command filled in so you can add the rest.
+
+## New in 5.5 — menus
+Press **P** (or `/profit menu`) for the main menu, which opens everything below. The commands open the same menus;
+add `chat` to get the old chat output (e.g. `/profit history chat`, `/flips chat`).
+- **Current session** (`/profit`, `/miningprofit`...): one tab per running activity, every item / shard / rare drop /
+  spent item with its value and a **Hide** button, plus End & save, Copy summary.
+- **History** (`/profit history`): tabs All + each activity, hover a session for fortune, notes, shards and rare drops,
+  profit/h trend, Export CSV.
+- **Lifetime totals** (`/profit total`), **Best now** (`/profit suggest`, Farming and Mining tabs).
+- **Bazaar flips** (`/flips`): Best flips, Plan, My orders (with Remove), Profit log; every flip / order has a
+  **Bazaar** button that opens the item; Refresh prices and Flip settings at the top.
+- **Next talismans** (`/talismans`) and **Settings** (O) as before.
+
+## New in 5.4
+- `/talismans` opens a **menu**: rank, name in rarity color, +MP, price, coins per MP, and an **AH** or **Recipe** button
+  per accessory (closes the menu and runs the search / recipe command). Top 10 / 20 / 50, crafting on/off and a max price
+  at the top, total cost at the bottom. `/talismans chat` still prints the list in chat.
+
+## New in 5.3
+- **Torrhus Canyon** and **Moonglade Marsh** are recognised as foraging islands (built in, so they work even with an
+  older config). **Desert Whispers** are tracked next to Forest Whispers, and Helix Fortune shows in the stats.
+- Where HUDs appear was checked for every activity: the **Dungeon Hub no longer counts as a dungeon**, and newer
+  Hypixel Mod API names for mining and foraging islands are recognised.
+- **Moving HUDs with chat open (T)** now reads the mouse directly, so it works on every version; every visible panel gets
+  an outline while chat is open (orange = under your mouse). Drag to move, middle-click to resize, right-click a title to hide.
+
 ## New in 5.2
 - **`/talismans [count]`**: the next accessories to get, ranked by **coins per Magical Power**, using the cheaper of the
   Auction House (lowest BIN) and crafting. Upgrade chains are understood (Talisman → Ring → Artifact): if you own a lower
@@ -71,7 +105,7 @@ Each one can be turned off in Settings → Dungeons. Still not included: Boulder
 
 ## New in 5.0
 - **Two Minecraft versions**: every build now makes a jar for **26.1.x** and one for **26.2** (Actions → Artifacts:
-  `farmprofit-mc26.1.2` and `farmprofit-mc26.2`). If one version fails to build, the other still does.
+  `skyassist-mc26.1.2` and `skyassist-mc26.2`). If one version fails to build, the other still does.
 - **Craft cost** in tooltips: what an item costs to craft from bought ingredients (each ingredient bought or crafted,
   whichever is cheaper), and whether crafting or buying is cheaper. Recipes: NEU item repository, downloaded weekly.
 - **Calculator**: in Bazaar / Auction amount signs type a sum ending in `=` (`64x8=`, `10m/3=`, `(2.5k+500)*4=`) and it
@@ -133,7 +167,7 @@ Each one can be turned off in Settings → Dungeons. Still not included: Boulder
 - Items you use up (potions, arrows, visitor requests) go into a separate **Spent** list instead of quietly lowering totals.
 - Items from dungeon reward chests and Garden visitor menus are now counted (other menus are still ignored, so buying isn't "profit").
 - **`/profit debug`** shows what's working (tab list, location, sidebar, prices, icons, scale, mouse, recognised messages).
-  Hypixel messages the mod doesn't understand yet are saved to `config/farmprofit/unrecognised-messages.txt`.
+  Hypixel messages the mod doesn't understand yet are saved to `config/skyassist/unrecognised-messages.txt`.
 
 **Location: install the Hypixel Mod API (recommended)**
 Download *Hypixel Mod API* for Fabric 26.1 from Modrinth and put it in `mods`. The mod then gets your exact location from
@@ -154,7 +188,7 @@ Hypixel and no longer depends on the tab list's Area line. Without it, the tab l
 - `/profit export` writes `history.csv` (open in Excel/Sheets for graphs); `/profit history` shows a profit/h trend bar.
 
 ## Settings menu
-Press **O** (rebind it in Options → Controls → Key Binds → "SkyBlock Profit Counter"), or use `/profit settings`,
+Press **O** (rebind it in Options → Controls → Key Binds → "SkyAssist"), or use `/profit settings`,
 to open a menu with **every** setting, grouped into tabs:
 General, HUD, Farming, Mining, Foraging, Fishing, Combat & Slayers, Dungeons, Bazaar flipping, Items & areas.
 Each activity tab also has a switch to hide that activity's HUD (tracking keeps running).
@@ -214,12 +248,12 @@ Sweep, Magic Find...), **Powders** and **Commissions** (mining), and Forest Whis
 4. Open the **Actions** tab. A "Build mod" run starts by itself (takes ~3-5 min).
    If nothing is running, click **Build mod → Run workflow**.
 5. When it shows a green check, click the run, scroll to **Artifacts**, download
-   `farmprofit-mod`, and unzip it. Inside is `farmprofit-1.0.0.jar`.
+   `farmprofit-mod`, and unzip it. Inside is `skyassist jar`.
 
 ### 2. Install
 1. Install Fabric Loader for Minecraft **26.1.2** (fabricmc.net/use/installer) — or use
    Prism Launcher / Modrinth App and create a Fabric 26.1.2 instance.
-2. Put **Fabric API** (for 26.1.2, from Modrinth) and `farmprofit-1.0.0.jar` in your `mods` folder.
+2. Put **Fabric API** (for 26.1.2, from Modrinth) and `skyassist jar` in your `mods` folder.
 3. Launch and join Hypixel.
 
 ### 3. In game
@@ -228,7 +262,7 @@ Sweep, Magic Find...), **Powders** and **Commissions** (mining), and Forest Whis
 - Start farming. The HUD appears as soon as you break a crop.
 
 ## Settings
-`.minecraft/config/farmprofit/config.json`
+`.minecraft/config/skyassist/config.json`
 - `resetMinutes` – idle time before a session ends (default 15)
 - `priceMode` – `"best"` (default: Bazaar instasell or NPC, whichever pays more), `"instasell"`, `"sellorder"`, `"npc"`
 - `pauseSeconds` – the timer pauses after this long without activity (default 30), so AFK time doesn't lower profit/h
@@ -240,4 +274,4 @@ Sweep, Magic Find...), **Powders** and **Commissions** (mining), and Forest Whis
 - `extraItems`, `extraCropBlocks`, `extraOreBlocks`, `extraLogBlocks` – add things the mod doesn't know
 - `showShards`, `showRareDrops`, `showCommissions`, `lowestBinUrl`
 
-History is saved to `.minecraft/config/farmprofit/history.json` (last 200 sessions).
+History is saved to `.minecraft/config/skyassist/history.json` (last 200 sessions).

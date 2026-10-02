@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Finished sessions, saved in .minecraft/config/farmprofit/history.json */
+/** Finished sessions, saved in .minecraft/config/skyassist/history.json */
 public final class History {
     private static final Path FILE = Config.DIR.resolve("history.json");
     private static final int MAX = 200;

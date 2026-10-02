@@ -23,7 +23,7 @@ public final class Election {
         long now = System.currentTimeMillis();
         if (now - lastFetch < 30 * 60_000) return;
         lastFetch = now;
-        HTTP.sendAsync(HttpRequest.newBuilder(URI.create(URL)).header("User-Agent", "SkyBlockProfitCounter")
+        HTTP.sendAsync(HttpRequest.newBuilder(URI.create(URL)).header("User-Agent", "SkyAssist")
                         .timeout(Duration.ofSeconds(20)).GET().build(), HttpResponse.BodyHandlers.ofString())
                 .thenAccept(r -> { if (r.statusCode() == 200) parse(r.body()); })
                 .exceptionally(e -> null);

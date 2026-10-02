@@ -14,15 +14,16 @@ final class FlipsCommand {
 
     static LiteralArgumentBuilder<FabricClientCommandSource> build() {
         return ClientCommands.literal("flips")
-                .executes(ctx -> { top(Config.get().bzTop); return 1; })
+                .executes(ctx -> { MenuScreen.open(() -> ProfitMenus.flips(0, null)); return 1; })
+                .then(ClientCommands.literal("chat").executes(ctx -> { top(Config.get().bzTop); return 1; }))
                 .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 50))
                         .executes(ctx -> { top(IntegerArgumentType.getInteger(ctx, "count")); return 1; }))
                 .then(ClientCommands.literal("plan")
-                        .executes(ctx -> { plan(5); return 1; })
+                        .executes(ctx -> { MenuScreen.open(() -> ProfitMenus.flips(1, null)); return 1; })
                         .then(ClientCommands.argument("items", IntegerArgumentType.integer(1, 20))
                                 .executes(ctx -> { plan(IntegerArgumentType.getInteger(ctx, "items")); return 1; })))
-                .then(ClientCommands.literal("orders").executes(ctx -> { orders(); return 1; }))
-                .then(ClientCommands.literal("log").executes(ctx -> { log(); return 1; }))
+                .then(ClientCommands.literal("orders").executes(ctx -> { MenuScreen.open(() -> ProfitMenus.flips(2, null)); return 1; }))
+                .then(ClientCommands.literal("log").executes(ctx -> { MenuScreen.open(() -> ProfitMenus.flips(3, null)); return 1; }))
                 .then(ClientCommands.literal("remove")
                         .then(ClientCommands.argument("number", IntegerArgumentType.integer(1))
                                 .executes(ctx -> { remove(IntegerArgumentType.getInteger(ctx, "number")); return 1; })))
@@ -69,6 +70,23 @@ final class FlipsCommand {
     }
 
     /** Splits the budget across the best few flips, capped by how much each realistically trades in an hour. */
+    /** The plan as a list: best safe flips, budget split evenly, capped by realistic hourly volume. */
+    static List<Bazaar.Flip> planList(int n) {
+        Config c = Config.get();
+        List<Bazaar.Flip> picks = Bazaar.computeFlips().stream().filter(f -> f.warnings.isEmpty()).limit(n).toList();
+        List<Bazaar.Flip> out = new java.util.ArrayList<>();
+        if (picks.isEmpty()) return out;
+        double per = c.bzBudget / picks.size();
+        for (Bazaar.Flip f : picks) {
+            int qty = (int) Math.floor(Math.min(Math.min(per / f.buyAt, f.hourlyVolume * c.bzShare / 100.0), 71680));
+            if (qty <= 0) continue;
+            f.qty = qty;
+            f.profitHour = qty * f.profitEach;
+            out.add(f);
+        }
+        return out;
+    }
+
     private static void plan(int n) {
         if (!pricesReady()) return;
         Config c = Config.get();

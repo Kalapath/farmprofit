@@ -70,7 +70,7 @@ public final class Tracker {
     private static final Map<String, String> SLAYERS = Map.of(
             "Zombies", "Revenant Horror", "Spiders", "Tarantula Broodfather", "Wolves", "Sven Packmaster",
             "Endermen", "Voidgloom Seraph", "Blazes", "Inferno Demonlord", "Vampires", "Riftstalker Bloodfiend");
-    private static final String[] POWDERS = {"Mithril", "Gemstone", "Glacite", "Forest Whispers"};
+    private static final String[] POWDERS = {"Mithril", "Gemstone", "Glacite", "Forest Whispers", "Desert Whispers"};
     private static final long INVENTORY_WINDOW_MS = 10_000;
     private static final long SHOWN_WINDOW_MS = 60_000;
 
@@ -287,6 +287,8 @@ public final class Tracker {
 
     public static void tick(Minecraft mc) {
         SettingsScreen.tick(mc);
+        TalismansScreen.tick(mc);
+        MenuScreen.tick(mc);
         GuiEditor.tick(mc);
         SetupScreen.tick(mc);
         UpdateCheck.tick();
@@ -514,20 +516,13 @@ public final class Tracker {
         area = null;
         String fromApi = HypixelLocation.activity();
         String apiMap = HypixelLocation.map;
-        if (apiMap != null) {
-            for (String f : Config.get().miningAreas) if (apiMap.contains(f)) fromApi = MINING;
-            for (String f : Config.get().foragingAreas) if (apiMap.contains(f)) fromApi = FORAGING;
-        }
+        if (apiMap != null && areaFor(apiMap) != null) fromApi = areaFor(apiMap);
         if (fromApi != null) {
             area = fromApi.isEmpty() ? null : fromApi;
             if (!fromApi.isEmpty() || a == null) { onAreaChecked(); readPowder(); return; }
         }
         if (a != null) {
-            for (String f : Config.get().miningAreas) if (a.contains(f)) area = MINING;
-            for (String f : Config.get().foragingAreas) if (a.contains(f)) area = FORAGING;
-            if (a.contains("Garden")) area = FARMING;
-            if (a.contains("Catacombs") || a.contains("Dungeon")) area = DUNGEONS;
-            if (a.contains("Kuudra")) area = KUUDRA;
+            area = areaFor(a);
         }
         if (tab.containsKey("Crypts") || tab.containsKey("Secrets Found")) area = DUNGEONS;
         onAreaChecked();
@@ -540,10 +535,28 @@ public final class Tracker {
             long val = number(v);
             if (val < 0) continue;
             Long last = lastPowder.put(p, val);
-            String owner = p.equals("Forest Whispers") ? FORAGING : MINING;
+            String owner = p.endsWith("Whispers") ? FORAGING : MINING;
             Session s = owner.equals(area) ? sessions.get(owner) : null;
             if (s != null && last != null && val > last) s.addPowder(p, val - last);
         }
+    }
+
+    /** Islands / areas that have their own HUD. Your own extra names from the settings are added on top. */
+    private static final String[] MINING_PLACES = {"Dwarven Mines", "Crystal Hollows", "Mineshaft", "Glacite", "Deep Caverns", "Gold Mine"};
+    private static final String[] FORAGING_PLACES = {"The Park", "Galatea", "Moonglade", "Torrhus"};
+
+    /** Which HUD an area name belongs to (tab-list "Area:" or the Mod API map name), or null. */
+    public static String areaFor(String name) {
+        if (name == null) return null;
+        if (name.contains("Dungeon Hub")) return null;                         // the hub isn't a dungeon
+        if (name.contains("Catacombs") || name.contains("Dungeon")) return DUNGEONS;
+        if (name.contains("Kuudra")) return KUUDRA;
+        if (name.contains("Garden")) return FARMING;
+        for (String f : FORAGING_PLACES) if (name.contains(f)) return FORAGING;
+        for (String f : MINING_PLACES) if (name.contains(f)) return MINING;
+        for (String f : Config.get().foragingAreas) if (!f.isBlank() && name.contains(f)) return FORAGING;
+        for (String f : Config.get().miningAreas) if (!f.isBlank() && name.contains(f)) return MINING;
+        return null;
     }
 
     public static long number(String s) {
@@ -556,7 +569,7 @@ public final class Tracker {
     public static String[] statKeys(String type) {
         if (isMiningType(type)) return new String[]{"Mining Speed", "Mining Fortune", "Gemstone Fortune", "Ore Fortune", "Block Fortune"};
         return switch (type) {
-            case FORAGING -> new String[]{"Sweep", "Foraging Fortune", "Fig Fortune", "Mangrove Fortune"};
+            case FORAGING -> new String[]{"Sweep", "Foraging Fortune", "Fig Fortune", "Mangrove Fortune", "Helix Fortune"};
             case FISHING -> new String[]{"Fishing Speed", "Sea Creature Chance", "Double Hook Chance", "Treasure Chance"};
             case COMBAT, DUNGEONS, KUUDRA, DIANA -> new String[]{"Magic Find"};
             default -> new String[]{"Farming Fortune"};

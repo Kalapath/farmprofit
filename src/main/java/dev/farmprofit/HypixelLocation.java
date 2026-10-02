@@ -23,9 +23,9 @@ public final class HypixelLocation {
         if (m == null) return null;
         m = m.toLowerCase(java.util.Locale.ROOT);
         if (m.equals("garden")) return Tracker.FARMING;
-        if (m.startsWith("mining_") || m.equals("crystal_hollows") || m.equals("mineshaft")) return Tracker.MINING;
-        if (m.startsWith("foraging_") || m.equals("galatea")) return Tracker.FORAGING;
-        if (m.equals("dungeon")) return Tracker.DUNGEONS;
+        if (m.startsWith("mining") || m.equals("crystal_hollows") || m.contains("mineshaft") || m.contains("glacite")) return Tracker.MINING;
+        if (m.startsWith("foraging") || m.contains("galatea") || m.contains("moonglade") || m.contains("torrhus")) return Tracker.FORAGING;
+        if (m.equals("dungeon")) return Tracker.DUNGEONS;             // not the Dungeon Hub
         if (m.equals("kuudra")) return Tracker.KUUDRA;
         return "";   // known place that isn't a special HUD area
     }

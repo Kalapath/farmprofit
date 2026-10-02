@@ -15,7 +15,7 @@ public final class SetupScreen extends Screen {
     private static boolean shownThisLaunch, openNextTick;
     private static long onSkyBlockSince;
 
-    public SetupScreen() { super(Component.literal("Profit Counter setup")); }
+    public SetupScreen() { super(Component.literal("SkyAssist setup")); }
 
     private record Check(boolean ok, String text, String fix) {}
 
@@ -37,7 +37,7 @@ public final class SetupScreen extends Screen {
     @Override
     protected void init() {
         int left = Math.max(10, width / 2 - 170), y = 20;
-        addRenderableWidget(new StringWidget(left, y, 340, 10, Component.literal("§6§lSkyBlock Profit Counter — setup check"), font));
+        addRenderableWidget(new StringWidget(left, y, 340, 10, Component.literal("§6§lSkyAssist — setup check"), font));
         y += 18;
         for (Check c : checks()) {
             StringWidget w = new StringWidget(left, y, 340, 10, Component.literal((c.ok() ? "§a✔ " : "§c✖ ") + "§f" + c.text()), font);
@@ -63,7 +63,7 @@ public final class SetupScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Open tab widgets"), b -> {
             onClose();
             Object conn = Minecraft.getInstance().getConnection();
-            if (Reflect.call(conn, "sendCommand", "widget") == Reflect.FAIL) Tracker.say("§6[Profit] §7Type §f/widget §7to edit your tab list.");
+            if (Reflect.call(conn, "sendCommand", "widget") == Reflect.FAIL) Tracker.say("§6[SkyAssist] §7Type §f/widget §7to edit your tab list.");
         }).bounds(left, by, 110, 20).build()).setTooltip(Tooltip.create(Component.literal("Runs Hypixel's /widget menu.")));
         if (!dup.isEmpty()) {
             addRenderableWidget(Button.builder(Component.literal("Turn off duplicates"), b -> { Dedupe.turnOff(); rebuildWidgets(); })

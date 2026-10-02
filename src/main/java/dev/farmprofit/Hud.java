@@ -286,7 +286,10 @@ public final class Hud {
         if ((s.isMining() && !Config.get().mineShowPowder) || (s.isForaging() && !Config.get().forShowWhispers)) return;
         double h = s.hours(now);
         List<String> kinds = new ArrayList<>();
-        if (s.isForaging()) kinds.add("Forest Whispers");
+        if (s.isForaging()) {
+            for (String w : new String[]{"Forest Whispers", "Desert Whispers"}) if (s.powder.getOrDefault(w, 0L) > 0) kinds.add(w);
+            if (kinds.isEmpty()) kinds.add(Tracker.areaName != null && Tracker.areaName.contains("Torrhus") ? "Desert Whispers" : "Forest Whispers");
+        }
         else {
             for (String p : new String[]{"Mithril", "Gemstone", "Glacite"}) if (s.powder.getOrDefault(p, 0L) > 0) kinds.add(p);
             if (kinds.isEmpty()) {
@@ -296,7 +299,7 @@ public final class Hud {
         }
         for (String p : kinds) {
             long gained = s.powder.getOrDefault(p, 0L);
-            String color = switch (p) { case "Gemstone" -> "§d"; case "Glacite" -> "§b"; case "Forest Whispers" -> "§3"; default -> "§2"; };
+            String color = switch (p) { case "Gemstone" -> "§d"; case "Glacite" -> "§b"; case "Forest Whispers" -> "§3"; case "Desert Whispers" -> "§e"; default -> "§2"; };
             String rate = h < 1.0 / 60 ? "" : " §8(" + Fmt.coins(gained / h) + "/h)";
             out.add("§7" + (p.endsWith("Whispers") ? p : p + " Powder") + ": " + color + "+" + Fmt.num(gained) + rate);
         }

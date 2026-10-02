@@ -44,7 +44,7 @@ public final class CraftCost {
         if (now - lastCheck < (RECIPES.isEmpty() ? 15 * 60_000 : 6 * 3_600_000L)) return;
         lastCheck = now;
         loading = true;
-        Thread t = new Thread(CraftCost::load, "farmprofit-recipes");
+        Thread t = new Thread(CraftCost::load, "skyassist-recipes");
         t.setDaemon(true);
         t.start();
     }
@@ -55,7 +55,7 @@ public final class CraftCost {
             String url = Config.get().neuRepoUrl;
             if (stale && url != null && !url.isBlank()) {
                 HttpClient http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).connectTimeout(Duration.ofSeconds(15)).build();
-                HttpResponse<Path> r = http.send(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyBlockProfitCounter")
+                HttpResponse<Path> r = http.send(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyAssist")
                         .timeout(Duration.ofMinutes(3)).GET().build(), HttpResponse.BodyHandlers.ofFile(Config.DIR.resolve("neu-repo.tmp")));
                 if (r.statusCode() == 200) Files.move(r.body(), ZIP, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }

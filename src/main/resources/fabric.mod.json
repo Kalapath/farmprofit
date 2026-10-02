@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "farmprofit",
+  "id": "skyassist",
   "version": "${version}",
-  "name": "SkyBlock Profit Counter",
-  "description": "Display-only profit tracker for Hypixel SkyBlock: farming, mining, foraging, fishing, combat, dungeons, Kuudra, Diana and Bazaar flipping.",
+  "name": "SkyAssist",
+  "description": "Display-only Hypixel SkyBlock helper: profit tracking for every activity, Bazaar flipping, price and craft-cost tooltips, talisman planner, dungeon secret finder and puzzle solvers.",
   "authors": ["Kalapath"],
   "contact": {
     "sources": "https://github.com/Kalapath/farmprofit",

@@ -37,7 +37,7 @@ public final class Enchants {
         long now = System.currentTimeMillis();
         if (now - lastFetch < (DATA.isEmpty() ? 10 * 60_000 : 24 * 3_600_000L)) return;
         lastFetch = now;
-        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyBlockProfitCounter")
+        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyAssist")
                         .timeout(Duration.ofSeconds(20)).GET().build(), HttpResponse.BodyHandlers.ofString())
                 .thenAccept(r -> { if (r.statusCode() == 200) parse(r.body()); })
                 .exceptionally(e -> null);
@@ -122,7 +122,9 @@ public final class Enchants {
                 else color = c.enchantPoorColor;
                 String text = part.trim();
                 if (c.enchantMaxTag && lvl >= info[1]) text += " ✦";
-                out.add(paint(text, ultimate && lvl < info[1] ? "light purple" : color, ultimate));
+                // ultimate enchants keep Hypixel's own bold pink (unless you turn that off)
+                if (ultimate && c.ultimateKeepPink) out.add(paint(text, "light purple", true));
+                else out.add(paint(text, color, ultimate));
             }
             if (!allEnchants || out.isEmpty()) continue;
             lines.set(i, Component.literal(String.join("§9, ", out)));

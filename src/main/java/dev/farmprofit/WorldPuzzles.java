@@ -369,7 +369,7 @@ public final class WorldPuzzles {
         long now = System.currentTimeMillis();
         if (now - quizFetch < (QUIZ.isEmpty() ? 10 * 60_000 : 12 * 3_600_000L)) return;
         quizFetch = now;
-        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyBlockProfitCounter")
+        HttpClient.newHttpClient().sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyAssist")
                         .timeout(Duration.ofSeconds(20)).GET().build(), HttpResponse.BodyHandlers.ofString())
                 .thenAccept(r -> {
                     if (r.statusCode() != 200) return;

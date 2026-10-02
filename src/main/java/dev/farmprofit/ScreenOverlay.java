@@ -26,7 +26,7 @@ final class ScreenOverlay {
                         return switch (method.getName()) {
                             case "hashCode" -> System.identityHashCode(p);
                             case "equals" -> p == args[0];
-                            default -> "FarmProfitOverlay";
+                            default -> "SkyAssistOverlay";
                         };
                     }
                     if (args != null && args.length >= 2) {

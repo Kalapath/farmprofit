@@ -37,7 +37,7 @@ public final class Debug {
     private static String maybe(Boolean b) { return b == null ? "§8?" : ok(b); }
 
     public static void show() {
-        Tracker.say("§6§l[Profit] Debug");
+        Tracker.say("§6§l[SkyAssist] Debug");
         Tracker.say(" " + ok(!Tracker.tab.isEmpty()) + " §7Tab list read §8(" + Tracker.tab.size() + " lines)");
         Tracker.say(" " + ok(Tracker.areaName != null || HypixelLocation.mode != null) + " §7Location: §f"
                 + (HypixelLocation.mode != null ? "Mod API mode=" + HypixelLocation.mode : "tab Area=" + Tracker.areaName)
@@ -58,7 +58,7 @@ public final class Debug {
         SEEN.forEach((k, v) -> seen.append("§f").append(k).append(" §8x").append(v).append("§7, "));
         Tracker.say(seen.toString());
         if (!lastActionBar.isEmpty()) Tracker.say(" §7Last action bar: §f" + lastActionBar);
-        Tracker.say(" §8Unrecognised messages are saved to config/farmprofit/unrecognised-messages.txt — send me that file to add support.");
+        Tracker.say(" §8Unrecognised messages are saved to config/skyassist/unrecognised-messages.txt — send me that file to add support.");
     }
 
     private Debug() {}

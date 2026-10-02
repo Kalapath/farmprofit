@@ -1,5 +1,23 @@
 # Changelog
 
+## 6.0.0
+- Renamed to SkyAssist (mod ID skyassist, config folder moved automatically, /skyassist command).
+
+## 5.6.0
+- Commands list with explanations (/profit help, Settings → Commands, main menu).
+
+## 5.5.0
+- Menus for the current session, history, totals, best now and Bazaar flips; main menu on P.
+
+## 5.4.0
+- /talismans opens a menu (top 10/20/50, crafting toggle, max price, AH / Recipe buttons). /talismans chat keeps the chat list.
+
+## 5.3.1
+- Ultimate enchantments keep their bold pink at every level.
+
+## 5.3.0
+- Torrhus Canyon / Moonglade Marsh, Desert Whispers, Dungeon Hub fix, reliable HUD dragging in chat.
+
 ## 5.2.0
 - /talismans: cheapest Magical Power you don't have yet (AH or craft, upgrade-aware).
 

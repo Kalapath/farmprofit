@@ -27,9 +27,9 @@ final class GuiEditor {
         if (chat instanceof net.minecraft.client.gui.screens.Screen screen) {
             HudRenderer.editMode = true;
             Compat.setScreen(mc, screen);
-            Tracker.say("§6[Profit] §7HUD editor: drag panels, middle-click to resize, right-click a title to hide it. Close chat when done.");
+            Tracker.say("§6[SkyAssist] §7HUD editor: drag panels, middle-click to resize, right-click a title to hide it. Close chat when done.");
         } else {
-            Tracker.say("§6[Profit] §7Open chat (§fT§7) to edit the HUD: drag panels, middle-click to resize, right-click a title to hide.");
+            Tracker.say("§6[SkyAssist] §7Open chat (§fT§7) to edit the HUD: drag panels, middle-click to resize, right-click a title to hide.");
         }
     }
 

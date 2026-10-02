@@ -1,4 +1,4 @@
-# SkyBlock Profit Counter
+# SkyAssist
 
 **Profit tracking for every part of Hypixel SkyBlock, in one mod.** Farming, mining, foraging, fishing, combat & slayers,
 grinds (Zealots, Ghosts...), dungeons, Kuudra, Diana and Bazaar flipping each get their own HUD that switches

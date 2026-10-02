@@ -38,16 +38,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class FarmProfitClient implements ClientModInitializer {
-    public static final Logger LOG = LoggerFactory.getLogger("farmprofit");
+    public static final Logger LOG = LoggerFactory.getLogger("skyassist");
 
-    private static KeyMapping settingsKey;
+    private static KeyMapping settingsKey, menuKey;
 
     @Override
     public void onInitializeClient() {
-        KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("farmprofit", "main"));
+        KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("skyassist", "main"));
         settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.farmprofit.settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, category));
+                "key.skyassist.settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, category));
+        menuKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.skyassist.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, category));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (menuKey.consumeClick()) {
+                if (Compat.noScreen(client)) Compat.setScreen(client, ProfitMenus.hub());
+            }
             while (settingsKey.consumeClick()) {
                 if (Compat.noScreen(client)) Compat.setScreen(client, new SettingsScreen());
             }
@@ -115,7 +120,7 @@ public final class FarmProfitClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> Tracker.endAll(false));
 
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
-                Identifier.fromNamespaceAndPath("farmprofit", "hud"), (graphics, delta) -> {
+                Identifier.fromNamespaceAndPath("skyassist", "hud"), (graphics, delta) -> {
                     Minecraft mc = Minecraft.getInstance();
                     Config cfg = Config.get();
                     boolean chat = Compat.screen(mc) instanceof ChatScreen;
@@ -143,8 +148,9 @@ public final class FarmProfitClient implements ClientModInitializer {
                         int alpha = Math.max(0, Math.min(255, chat ? Math.max(cfg.hudOpacity, 176) : cfg.hudOpacity));
                         if (box.hidden()) alpha = 60;
                         if (alpha > 0) graphics.fill(x - 3, y - 3, x + box.w() + 3, y + box.h() + 1, alpha << 24);
-                        if (HudRenderer.editMode || (chat && hovered != null && hovered[0] == b)) {
-                            int c = box.hidden() ? 0x80FF5555 : 0xFFFFAA00;          // outline while editing
+                        if (HudRenderer.editMode || chat) {
+                            boolean over = hovered != null && hovered[0] == b;
+                            int c = box.hidden() ? 0x80FF5555 : over ? 0xFFFFAA00 : 0x60FFFFFF;   // outline while chat is open
                             graphics.fill(x - 4, y - 4, x + box.w() + 4, y - 3, c);
                             graphics.fill(x - 4, y + box.h() + 1, x + box.w() + 4, y + box.h() + 2, c);
                             graphics.fill(x - 4, y - 3, x - 3, y + box.h() + 1, c);
@@ -185,9 +191,10 @@ public final class FarmProfitClient implements ClientModInitializer {
             dispatcher.register(buildCommand("dianaprofit", Tracker.DIANA));
             dispatcher.register(FlipsCommand.build());
             dispatcher.register(ClientCommands.literal("talismans")
-                    .executes(ctx -> { Accessories.show(Config.get().talismanCount); return 1; })
+                    .executes(ctx -> { TalismansScreen.requestOpen(Config.get().talismanCount); return 1; })
+                    .then(ClientCommands.literal("chat").executes(ctx -> { Accessories.show(Config.get().talismanCount); return 1; }))
                     .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 50))
-                            .executes(ctx -> { Accessories.show(IntegerArgumentType.getInteger(ctx, "count")); return 1; })));
+                            .executes(ctx -> { TalismansScreen.requestOpen(IntegerArgumentType.getInteger(ctx, "count")); return 1; })));
             dispatcher.register(ClientCommands.literal("calc")
                     .then(ClientCommands.argument("sum", StringArgumentType.greedyString()).executes(ctx -> {
                         String sum = StringArgumentType.getString(ctx, "sum");
@@ -198,9 +205,15 @@ public final class FarmProfitClient implements ClientModInitializer {
                         Tracker.say("§6[Calc] §7" + sum + " §f= §a" + r + " §8(" + Fmt.coins(v) + ", copied)");
                         return 1;
                     })));
+            dispatcher.register(ClientCommands.literal("skyassist")
+                    .executes(ctx -> { MenuScreen.open(ProfitMenus::hub); return 1; })
+                    .then(ClientCommands.literal("help").executes(ctx -> { MenuScreen.open(() -> Commands.screen(null)); return 1; }))
+                    .then(ClientCommands.literal("settings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }))
+                    .then(ClientCommands.literal("gui").executes(ctx -> { GuiEditor.open(); return 1; }))
+                    .then(ClientCommands.literal("setup").executes(ctx -> { SetupScreen.requestOpen(); return 1; })));
             dispatcher.register(ClientCommands.literal("profitsettings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }));
         });
-        LOG.info("Profit Counter loaded");
+        LOG.info("SkyAssist loaded");
     }
 
     /** Draws a 16px item icon shrunk to fit a 10px line. Silently skipped if not possible. */
@@ -219,27 +232,40 @@ public final class FarmProfitClient implements ClientModInitializer {
 
     private static LiteralArgumentBuilder<FabricClientCommandSource> buildCommand(String name, String fixed) {
         return ClientCommands.literal(name)
-                .executes(ctx -> { showCurrent(typeFor(fixed)); return 1; })
+                .executes(ctx -> { String t = typeFor(fixed); MenuScreen.open(() -> ProfitMenus.session(t, null)); return 1; })
+                .then(ClientCommands.literal("chat").executes(ctx -> { showCurrent(typeFor(fixed)); return 1; }))
+                .then(ClientCommands.literal("menu").executes(ctx -> { MenuScreen.open(ProfitMenus::hub); return 1; }))
+                .then(ClientCommands.literal("help").executes(ctx -> { MenuScreen.open(() -> Commands.screen(null)); return 1; }))
+                .then(ClientCommands.literal("commands").executes(ctx -> { MenuScreen.open(() -> Commands.screen(null)); return 1; }))
                 .then(ClientCommands.literal("reset").executes(ctx -> {
                     String type = typeFor(fixed);
                     Session s = type == null ? null : Tracker.sessions.get(type);
-                    if (s == null) Tracker.say("§6[Profit] §7No " + (type == null ? "" : type + " ") + "session running.");
+                    if (s == null) Tracker.say("§6[SkyAssist] §7No " + (type == null ? "" : type + " ") + "session running.");
                     else Tracker.endSession(s, true);
                     return 1;
                 }))
                 .then(ClientCommands.literal("history")
-                        .executes(ctx -> { showHistory(fixed, 10); return 1; })
+                        .executes(ctx -> { MenuScreen.open(() -> ProfitMenus.history(fixed, null)); return 1; })
+                        .then(ClientCommands.literal("chat").executes(ctx -> { showHistory(fixed, 10); return 1; }))
                         .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 200))
                                 .executes(ctx -> { showHistory(fixed, IntegerArgumentType.getInteger(ctx, "count")); return 1; })))
-                .then(ClientCommands.literal("suggest").executes(ctx -> { suggest(typeFor(fixed)); return 1; }))
-                .then(ClientCommands.literal("total").executes(ctx -> { showTotals(fixed); return 1; }))
+                .then(ClientCommands.literal("suggest")
+                        .executes(ctx -> {
+                            int tab = Tracker.isMiningType(typeFor(fixed)) ? 1 : 0;
+                            MenuScreen.open(() -> ProfitMenus.suggest(tab, null));
+                            return 1;
+                        })
+                        .then(ClientCommands.literal("chat").executes(ctx -> { suggest(typeFor(fixed)); return 1; })))
+                .then(ClientCommands.literal("total")
+                        .executes(ctx -> { MenuScreen.open(() -> ProfitMenus.totals(null)); return 1; })
+                        .then(ClientCommands.literal("chat").executes(ctx -> { showTotals(fixed); return 1; })))
                 .then(ClientCommands.literal("copy").executes(ctx -> { copy(typeFor(fixed)); return 1; }))
                 .then(ClientCommands.literal("ignore")
                         .then(ClientCommands.argument("item", StringArgumentType.greedyString()).executes(ctx -> {
                             String item = StringArgumentType.getString(ctx, "item").trim();
                             if (!Config.get().ignoredItems.contains(item)) Config.get().ignoredItems.add(item);
                             Config.save();
-                            Tracker.say("§6[Profit] §7Ignoring §f" + item + "§7. Undo with /profit unignore " + item);
+                            Tracker.say("§6[SkyAssist] §7Ignoring §f" + item + "§7. Undo with /profit unignore " + item);
                             return 1;
                         })))
                 .then(ClientCommands.literal("unignore")
@@ -247,7 +273,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                             String item = StringArgumentType.getString(ctx, "item").trim();
                             boolean removed = Config.get().ignoredItems.remove(item);
                             Config.save();
-                            Tracker.say("§6[Profit] §7" + (removed ? "Counting §f" + item + " §7again." : "§f" + item + " §7wasn't ignored."));
+                            Tracker.say("§6[SkyAssist] §7" + (removed ? "Counting §f" + item + " §7again." : "§f" + item + " §7wasn't ignored."));
                             return 1;
                         })))
                 .then(ClientCommands.literal("scale")
@@ -255,7 +281,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                             Panels.Pos pos = Panels.get(Panels.key("main", Tracker.shownType()));
                             pos.scale = DoubleArgumentType.getDouble(ctx, "size");
                             Panels.save();
-                            Tracker.say("§6[Profit] §7HUD scale set to §f" + pos.scale + " §8(middle-click a panel with chat open to size each one)");
+                            Tracker.say("§6[SkyAssist] §7HUD scale set to §f" + pos.scale + " §8(middle-click a panel with chat open to size each one)");
                             return 1;
                         })))
                 .then(ClientCommands.literal("settings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }))
@@ -264,14 +290,14 @@ public final class FarmProfitClient implements ClientModInitializer {
                 .then(ClientCommands.literal("setup").executes(ctx -> { SetupScreen.requestOpen(); return 1; }))
                 .then(ClientCommands.literal("dedupe").executes(ctx -> {
                     Dedupe.turnOff();
-                    Tracker.say("§6[Profit] §7Done. Turn them back on any time in the settings.");
+                    Tracker.say("§6[SkyAssist] §7Done. Turn them back on any time in the settings.");
                     return 1;
                 }))
                 .then(ClientCommands.literal("gui")
                         .executes(ctx -> { GuiEditor.open(); return 1; })
                         .then(ClientCommands.literal("reset").executes(ctx -> {
                             Panels.reset();
-                            Tracker.say("§6[Profit] §7HUD layout reset.");
+                            Tracker.say("§6[SkyAssist] §7HUD layout reset.");
                             return 1;
                         }))
                         .then(ClientCommands.literal("preset").then(ClientCommands.argument("layout", StringArgumentType.word())
@@ -280,17 +306,17 @@ public final class FarmProfitClient implements ClientModInitializer {
                                     var win = Minecraft.getInstance().getWindow();
                                     String n = StringArgumentType.getString(ctx, "layout").toLowerCase();
                                     if (Panels.preset(n, win.getGuiScaledWidth(), win.getGuiScaledHeight()))
-                                        Tracker.say("§6[Profit] §7Layout §f" + n + " §7applied. Fine-tune with /profit gui.");
-                                    else Tracker.say("§6[Profit] §7Layouts: §fleft, right, split, compact");
+                                        Tracker.say("§6[SkyAssist] §7Layout §f" + n + " §7applied. Fine-tune with /profit gui.");
+                                    else Tracker.say("§6[SkyAssist] §7Layouts: §fleft, right, split, compact");
                                     return 1;
                                 }))))
                 .then(ClientCommands.literal("note")
                         .then(ClientCommands.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
                             String type = typeFor(fixed);
                             Session s = type == null ? null : Tracker.sessions.get(type);
-                            if (s == null) { Tracker.say("§6[Profit] §7No session running to add a note to."); return 1; }
+                            if (s == null) { Tracker.say("§6[SkyAssist] §7No session running to add a note to."); return 1; }
                             s.note = StringArgumentType.getString(ctx, "text");
-                            Tracker.say("§6[Profit] §7Note added to this " + s.type + " session: §f" + s.note);
+                            Tracker.say("§6[SkyAssist] §7Note added to this " + s.type + " session: §f" + s.note);
                             return 1;
                         })))
                 .then(ClientCommands.literal("profile")
@@ -306,26 +332,26 @@ public final class FarmProfitClient implements ClientModInitializer {
                 .then(ClientCommands.literal("secrets").executes(ctx -> {
                     Config.get().secretFinder = !Config.get().secretFinder;
                     Config.save();
-                    Tracker.say("§6[Profit] §7Dungeon secret finder " + (Config.get().secretFinder ? "§aon" : "§coff"));
+                    Tracker.say("§6[SkyAssist] §7Dungeon secret finder " + (Config.get().secretFinder ? "§aon" : "§coff"));
                     return 1;
                 }))
                 .then(ClientCommands.literal("icons").executes(ctx -> {
                     Config.get().hudIcons = !Config.get().hudIcons;
                     Config.save();
-                    Tracker.say("§6[Profit] §7Item icons " + (Config.get().hudIcons ? "§aon" : "§coff"));
+                    Tracker.say("§6[SkyAssist] §7Item icons " + (Config.get().hudIcons ? "§aon" : "§coff"));
                     return 1;
                 }))
                 .then(ClientCommands.literal("edit").executes(ctx -> { GuiEditor.open(); return 1; }))
                 .then(ClientCommands.literal("hud").executes(ctx -> {
                     Config.get().hudEnabled = !Config.get().hudEnabled;
                     Config.save();
-                    Tracker.say("§6[Profit] §7HUD " + (Config.get().hudEnabled ? "§aon" : "§coff"));
+                    Tracker.say("§6[SkyAssist] §7HUD " + (Config.get().hudEnabled ? "§aon" : "§coff"));
                     return 1;
                 }))
                 .then(ClientCommands.literal("details").executes(ctx -> {
                     Config.get().hudDetails = !Config.get().hudDetails;
                     Config.save();
-                    Tracker.say("§6[Profit] §7HUD " + (Config.get().hudDetails
+                    Tracker.say("§6[SkyAssist] §7HUD " + (Config.get().hudDetails
                             ? "now shows §adetails §7(stats, powder, commissions...)" : "now shows §aprofit only"));
                     return 1;
                 }))
@@ -336,17 +362,17 @@ public final class FarmProfitClient implements ClientModInitializer {
                                     pos.x = IntegerArgumentType.getInteger(ctx, "x");
                                     pos.y = IntegerArgumentType.getInteger(ctx, "y");
                                     Panels.save();
-                                    Tracker.say("§6[Profit] §7HUD moved.");
+                                    Tracker.say("§6[SkyAssist] §7HUD moved.");
                                     return 1;
                                 }))))
                 .then(ClientCommands.literal("prices").executes(ctx -> {
                     Prices.refresh();
-                    Tracker.say("§6[Profit] §7Refreshing prices...");
+                    Tracker.say("§6[SkyAssist] §7Refreshing prices...");
                     return 1;
                 }))
                 .then(ClientCommands.literal("reload").executes(ctx -> {
                     Config.load();
-                    Tracker.say("§6[Profit] §7Config reloaded.");
+                    Tracker.say("§6[SkyAssist] §7Config reloaded.");
                     return 1;
                 }));
     }
@@ -354,7 +380,7 @@ public final class FarmProfitClient implements ClientModInitializer {
     private static void showCurrent(String type) {
         Session s = type == null ? null : Tracker.sessions.get(type);
         if (s == null) {
-            Tracker.say("§6[Profit] §7No " + (type == null ? "" : type + " ") + "session running. §8(try /profit history)");
+            Tracker.say("§6[SkyAssist] §7No " + (type == null ? "" : type + " ") + "session running. §8(try /profit history)");
             return;
         }
         for (String line : Hud.profitLines(s)) Tracker.say(line);
@@ -363,16 +389,16 @@ public final class FarmProfitClient implements ClientModInitializer {
     private static void suggest(String type) {
         boolean farming = Tracker.FARMING.equals(type);
         if (!farming && !Tracker.isMiningType(type)) {
-            Tracker.say("§6[Profit] §7Suggestions are for farming and mining: §f/farmprofit suggest §7or §f/miningprofit suggest");
+            Tracker.say("§6[SkyAssist] §7Suggestions are for farming and mining: §f/farmprofit suggest §7or §f/miningprofit suggest");
             return;
         }
-        if (!Prices.loaded()) { Tracker.say("§6[Profit] §7Prices are still loading, try again in a moment."); return; }
+        if (!Prices.loaded()) { Tracker.say("§6[SkyAssist] §7Prices are still loading, try again in a moment."); return; }
         var opts = farming ? Suggest.farming() : Suggest.mining();
         if (opts.isEmpty()) {
-            Tracker.say("§6[Profit] §7Can't estimate yet" + (farming ? "." : ": add Mining Speed to the Stats tab widget."));
+            Tracker.say("§6[SkyAssist] §7Can't estimate yet" + (farming ? "." : ": add Mining Speed to the Stats tab widget."));
             return;
         }
-        Tracker.say("§6§l[Profit] Best " + (farming ? "crops" : "ores here") + " right now §8(estimates from live prices + your stats)");
+        Tracker.say("§6§l[SkyAssist] Best " + (farming ? "crops" : "ores here") + " right now §8(estimates from live prices + your stats)");
         for (int i = 0; i < Math.min(10, opts.size()); i++) {
             var o = opts.get(i);
             Tracker.say("§8" + (i + 1) + ". §a" + o.name() + " §6~" + Fmt.coins(o.perHour()) + "/h §8(sell as "
@@ -387,7 +413,7 @@ public final class FarmProfitClient implements ClientModInitializer {
 
     /** Everything needed to fix detection problems, copied to the clipboard to paste into a chat with Claude. */
     private static void report() {
-        StringBuilder r = new StringBuilder("SkyBlock Profit Counter report\n");
+        StringBuilder r = new StringBuilder("SkyAssist report\n");
         r.append("build ").append(UpdateCheck.thisCommit()).append(", area=").append(Tracker.areaName)
                 .append(", hud=").append(Tracker.area).append(", modapi=").append(HypixelLocation.active)
                 .append(" mode=").append(HypixelLocation.mode).append(" map=").append(HypixelLocation.map).append('\n');
@@ -405,11 +431,11 @@ public final class FarmProfitClient implements ClientModInitializer {
                 for (String l : lines.subList(Math.max(0, lines.size() - 40), lines.size())) r.append("  ").append(l).append('\n');
             }
         } catch (Exception ignored) {}
-        if (Chat.copy(r.toString())) Tracker.say("§6[Profit] §7Report copied to your clipboard. Paste it into your chat with Claude.");
-        else Tracker.say("§6[Profit] §7Couldn't copy. Send config/farmprofit/unrecognised-messages.txt and a /profit debug screenshot instead.");
+        if (Chat.copy(r.toString())) Tracker.say("§6[SkyAssist] §7Report copied to your clipboard. Paste it into your chat with Claude.");
+        else Tracker.say("§6[SkyAssist] §7Couldn't copy. Send config/skyassist/unrecognised-messages.txt and a /profit debug screenshot instead.");
     }
 
-    private static void exportCsv() {
+    static void exportCsv() {
         try {
             StringBuilder csv = new StringBuilder("date,activity,main,active_minutes,profit,profit_per_hour,runs_or_bosses,note\n");
             var fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -424,15 +450,15 @@ public final class FarmProfitClient implements ClientModInitializer {
             }
             java.nio.file.Path file = Config.DIR.resolve("history.csv");
             java.nio.file.Files.writeString(file, csv.toString());
-            Tracker.say("§6[Profit] §7Exported " + History.all().size() + " sessions to §f" + file.toAbsolutePath()
+            Tracker.say("§6[SkyAssist] §7Exported " + History.all().size() + " sessions to §f" + file.toAbsolutePath()
                     + " §7(open it in Excel / Google Sheets for graphs).");
         } catch (Exception e) {
-            Tracker.say("§6[Profit] §cExport failed: " + e.getMessage());
+            Tracker.say("§6[SkyAssist] §cExport failed: " + e.getMessage());
         }
     }
 
     /** "▂▃▅▇▆" style bar of profit/h over sessions, oldest to newest. */
-    private static String sparkline(List<Session> sessions) {
+    static String sparkline(List<Session> sessions) {
         String bars = "▁▂▃▄▅▆▇█";
         double max = 0;
         for (Session s : sessions) max = Math.max(max, s.profitPerHour);
@@ -445,10 +471,10 @@ public final class FarmProfitClient implements ClientModInitializer {
     private static void showTotals(String fixed) {
         var all = Totals.all();
         if (all.isEmpty()) {
-            Tracker.say("§6[Profit] §7No finished sessions yet.");
+            Tracker.say("§6[SkyAssist] §7No finished sessions yet.");
             return;
         }
-        Tracker.say("§6§l[Profit] Lifetime totals:");
+        Tracker.say("§6§l[SkyAssist] Lifetime totals:");
         for (var e : all.entrySet()) {
             if (fixed != null && !fixed.equals(e.getKey())) continue;
             var t = e.getValue();
@@ -461,12 +487,12 @@ public final class FarmProfitClient implements ClientModInitializer {
 
     private static void copy(String type) {
         Session s = type == null ? null : Tracker.sessions.get(type);
-        if (s == null) { Tracker.say("§6[Profit] §7Nothing to copy."); return; }
+        if (s == null) { Tracker.say("§6[SkyAssist] §7Nothing to copy."); return; }
         long now = System.currentTimeMillis();
         String text = s.type + ": " + Fmt.coins(s.value()) + " coins in " + Fmt.duration(s.durationMs(now))
                 + " (" + Fmt.coins(s.perHour(now)) + "/h)";
-        if (Chat.copy(text)) Tracker.say("§6[Profit] §7Copied: §f" + text);
-        else Tracker.say("§6[Profit] §7Couldn't copy, here it is: §f" + text);
+        if (Chat.copy(text)) Tracker.say("§6[SkyAssist] §7Copied: §f" + text);
+        else Tracker.say("§6[SkyAssist] §7Couldn't copy, here it is: §f" + text);
     }
 
     private static boolean matches(Session s, String fixed) {
@@ -479,10 +505,10 @@ public final class FarmProfitClient implements ClientModInitializer {
     private static void showHistory(String fixed, int count) {
         List<Session> all = History.all().stream().filter(s -> matches(s, fixed)).toList();
         if (all.isEmpty()) {
-            Tracker.say("§6[Profit] §7No finished " + (fixed == null ? "" : fixed.toLowerCase() + " ") + "sessions yet.");
+            Tracker.say("§6[SkyAssist] §7No finished " + (fixed == null ? "" : fixed.toLowerCase() + " ") + "sessions yet.");
             return;
         }
-        Tracker.say("§6§l[Profit] Last " + Math.min(count, all.size()) + (fixed == null ? "" : " " + fixed.toLowerCase()) + " sessions:");
+        Tracker.say("§6§l[SkyAssist] Last " + Math.min(count, all.size()) + (fixed == null ? "" : " " + fixed.toLowerCase()) + " sessions:");
         var fmt = new java.text.SimpleDateFormat("dd.MM HH:mm");
         for (int i = all.size() - 1; i >= Math.max(0, all.size() - count); i--) {
             Session s = all.get(i);
@@ -497,7 +523,7 @@ public final class FarmProfitClient implements ClientModInitializer {
         List<Session> recent = all.subList(Math.max(0, all.size() - 30), all.size());
         String spark = sparkline(recent);
         if (!spark.isEmpty()) Tracker.say("§7Profit/h trend (last " + recent.size() + "): §e" + spark);
-        Tracker.say("§8Full details: /profit export (CSV) or .minecraft/config/farmprofit/history.json");
+        Tracker.say("§8Full details: /profit export (CSV) or .minecraft/config/skyassist/history.json");
     }
 
     private static String list(String prefix, java.util.Map<String, Integer> map) {

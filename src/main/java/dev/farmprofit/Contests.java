@@ -38,7 +38,7 @@ public final class Contests {
         boolean stale = CONTESTS.isEmpty() || CONTESTS.ceilingKey(now - CONTEST_MS) == null;
         if (now - lastFetch < (stale ? 10 * 60_000 : 60 * 60_000)) return;
         lastFetch = now;
-        HTTP.sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyBlockProfitCounter")
+        HTTP.sendAsync(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "SkyAssist")
                         .timeout(Duration.ofSeconds(20)).GET().build(), HttpResponse.BodyHandlers.ofString())
                 .thenAccept(r -> { if (r.statusCode() == 200) parse(r.body()); })
                 .exceptionally(e -> null);

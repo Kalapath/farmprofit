@@ -53,7 +53,7 @@ public final class Prices {
 
     private static void fetch(String url, java.util.function.Consumer<String> parser) {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-                .header("User-Agent", "SkyBlockProfitCounter/1.2")
+                .header("User-Agent", "SkyAssist")
                 .timeout(Duration.ofSeconds(30)).GET().build();
         HTTP.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(res -> {

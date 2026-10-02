@@ -57,7 +57,7 @@ public final class Hud {
             if (details) { String m = Election.hudLine(type); if (m != null) out.add(m); }
             if (details) addCommissions(out, type);
             if (together && Tracker.DUNGEONS.equals(type)) Secrets.addHudLines(out);
-            if (Tracker.FARMING.equals(type)) { Pests.addHudLines(out); Greenhouse.addHudLines(out); }
+            if (Tracker.FARMING.equals(type)) Pests.addHudLines(out);
             return out;
         }
 
@@ -112,6 +112,7 @@ public final class Hud {
         switch (id) {
             case "main" -> { return lines(); }
             case "bazaar" -> { return Bazaar.hudLines(); }
+            case "greenhouse" -> Greenhouse.addHudLines(out);
             case "secrets" -> {
                 if (cfg.separatePanels && Tracker.DUNGEONS.equals(Tracker.area)) Secrets.addHudLines(out);
             }
@@ -167,6 +168,7 @@ public final class Hud {
         if (s.costs > 0) out.add("§7" + (s.isCombat() ? "Quest costs" : "Costs") + ": §c-" + Fmt.coins(s.costs));
         double spent = s.spentValue();
         if (spent > 0) out.add("§7Spent: §c-" + Fmt.coins(spent) + " §8(" + s.spent.size() + " item" + (s.spent.size() > 1 ? "s" : "") + ")");
+        if (s.purseCoins > 0) out.add("§7Purse coins: §6+" + Fmt.coins(s.purseCoins) + " §8(Bountiful, mob coins...)");
         if (s.copper > 0) out.add("§7Copper: §c" + Fmt.num(s.copper) + (Config.get().copperValue > 0 ? " §8(" + Fmt.coins(s.copper * Config.get().copperValue) + ")" : ""));
     }
 
@@ -309,7 +311,7 @@ public final class Hud {
 
     private static void addExtras(Lines out, Session s) {
         Config c = Config.get();
-        if (s.isFarming()) { Pests.addHudLines(out); Greenhouse.addHudLines(out); }
+        if (s.isFarming()) Pests.addHudLines(out);
         if (s.isFarming() && s.totalPests() > 0 && c.farmShowPests) {
             var pests = new ArrayList<>(s.pests.entrySet());
             pests.sort((a, b) -> b.getValue() - a.getValue());

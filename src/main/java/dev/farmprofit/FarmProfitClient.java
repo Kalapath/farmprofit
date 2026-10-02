@@ -71,9 +71,10 @@ public final class FarmProfitClient implements ClientModInitializer {
         java.util.Set<Object> overlaid = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
         ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> InvSearch.attach(screen, w, h));
         ScreenEvents.BEFORE_INIT.register((client, screen, w, h) -> {
+            if (!overlaid.add(screen)) return;          // a resize re-inits the same menu: hook it up only once
             ScreenMouseEvents.allowMouseScroll(screen).register((s, mouseX, mouseY, horizontal, vertical) ->
                     TooltipScroll.onScroll(vertical));
-            if (overlaid.add(screen)) ScreenOverlay.register(screen);     // terminal solvers draw on menus
+            ScreenOverlay.register(screen);             // rarity colors, search highlights, terminal solvers
         });
 
         // Crops (farming breaks happen on the client)
@@ -120,6 +121,12 @@ public final class FarmProfitClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(Tracker::tick);
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> Tracker.endAll(false));
 
+        // rarity colors on the hotbar
+        HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR, Identifier.fromNamespaceAndPath("skyassist", "rarity"), (graphics, delta) -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (Compat.hudHidden(mc)) return;
+            for (int[] b : RarityBg.hotbarBoxes(mc)) if (b != null) graphics.fill(b[0], b[1], b[2], b[3], b[4]);
+        });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
                 Identifier.fromNamespaceAndPath("skyassist", "hud"), (graphics, delta) -> {
                     Minecraft mc = Minecraft.getInstance();
@@ -170,6 +177,20 @@ public final class FarmProfitClient implements ClientModInitializer {
                                 tx += 11;
                             }
                             graphics.text(mc.font, (box.hidden() ? "§8" : "") + l.text(), tx, ly, 0xFFFFFFFF, cfg.hudShadow);
+                        }
+                        if (box.id().equals("greenhouse")) {
+                            Greenhouse.Grid g = Greenhouse.grid();
+                            if (g != null) {
+                                int gx = x, gy = y + box.lines().size() * lh + 4, cw = HudRenderer.CELL_W, ch = HudRenderer.CELL_H;
+                                for (int r = 0; r < g.size(); r++) for (int cc = 0; cc < g.size(); cc++)      // empty grid
+                                    graphics.fill(gx + cc * cw, gy + r * ch, gx + cc * cw + cw - 2, gy + r * ch + ch - 2, 0x40FFFFFF);
+                                for (Greenhouse.Cell cell : g.cells()) {
+                                    int cx = gx + cell.col() * cw, cy = gy + cell.row() * ch;
+                                    graphics.fill(cx, cy, cx + cw - 2, cy + ch - 2, cell.fill());
+                                    int tw = mc.font.width(cell.label());
+                                    graphics.text(mc.font, cell.label(), cx + (cw - 2 - tw) / 2, cy + (ch - 2 - 8) / 2, cell.label().equals("✦") ? 0xFF202020 : 0xFFFFFFFF, true);
+                                }
+                            }
                         }
                         if (scaled) Reflect.call(pose, "popMatrix");
                     }

@@ -12,6 +12,7 @@ import java.util.Map;
 final class HudRenderer {
     /** Edit mode (/profit gui): every panel is shown with an outline, even empty or hidden ones. */
     static boolean editMode;
+    static final int CELL_W = 36, CELL_H = 18;
     private static final Map<String, Hud.Lines> cache = new HashMap<>();
     private static long cacheTime;
 
@@ -20,7 +21,7 @@ final class HudRenderer {
         boolean chat = Compat.screen(mc) instanceof ChatScreen;
         if (!chat) editMode = false;
         long now = System.currentTimeMillis();
-        if (chat || now - cacheTime > 250) {                 // rebuild text 4x a second (instant while editing)
+        if (now - cacheTime > (chat ? 100 : 250)) {         // rebuild text 4x a second (10x while editing)
             cache.clear();
             for (String id : Panels.ALL) cache.put(id, Hud.panel(id));
             cacheTime = now;
@@ -45,7 +46,12 @@ final class HudRenderer {
                 boolean icon = cfg.hudIcons && Tracker.icon(l.item()) != null;
                 w = Math.max(w, mc.font.width(l.text()) + (icon ? 11 : 0));
             }
-            HudEditor.Box box = new HudEditor.Box(id, key, lines, x, y, w, lines.size() * lh, lh, scale, pos.hidden);
+            int h = lines.size() * lh;
+            if (id.equals("greenhouse")) {
+                Greenhouse.Grid g = Greenhouse.grid();
+                if (g != null) { w = Math.max(w, g.size() * CELL_W); h += g.size() * CELL_H + 4; }
+            }
+            HudEditor.Box box = new HudEditor.Box(id, key, lines, x, y, w, h, lh, scale, pos.hidden);
             boxes.add(box);
             nextX = x;
             nextY = y + Math.round((box.h() + 10) * scale);

@@ -13,7 +13,7 @@ import java.util.Map;
  * Panels: main, bazaar, secrets, contest, suggest. The main panel can have its own spot per activity.
  */
 public final class Panels {
-    public static final List<String> ALL = List.of("main", "bazaar", "secrets", "contest", "suggest");
+    public static final List<String> ALL = List.of("main", "bazaar", "greenhouse", "secrets", "contest", "suggest");
 
     public static final class Pos {
         public int x = -1, y = -1;        // -1 = stack under the previous panel
@@ -27,6 +27,7 @@ public final class Panels {
     public static String title(String id) {
         return switch (id) {
             case "bazaar" -> "Bazaar orders";
+            case "greenhouse" -> "Greenhouse planter";
             case "secrets" -> "Dungeon secrets";
             case "contest" -> "Jacob's contest";
             case "suggest" -> "Best now";

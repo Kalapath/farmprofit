@@ -39,7 +39,7 @@ public final class ProfitMenus {
         rows.add(entry("§fDungeon", "This run's secrets, crypts, deaths, puzzles, team; past runs.", () -> Compat.setScreen(mc(), Dungeon.screen(Dungeon.inDungeon() ? 0 : 3, ref.screen))));
         rows.add(entry("§fGreenhouse", "Plan a mutation: what to unlock first and what to plant where.", () -> Compat.setScreen(mc(), Greenhouse.screen(ref.screen))));
         rows.add(entry("§fAttribute shards", "Cheapest attribute levels to buy next.", () -> Compat.setScreen(mc(), Shards.screen(ref.screen))));
-        rows.add(entry("§fNext talismans", "Cheapest Magical Power you don't have yet.", () -> Compat.setScreen(mc(), new TalismansScreen())));
+        rows.add(entry("§fNext talismans", "Cheapest Magical Power you don't have yet.", () -> Compat.setScreen(mc(), TalismansScreen.screen(ref.screen))));
         rows.add(entry("§fSettings", "Every setting, with search.", () -> Compat.setScreen(mc(), new SettingsScreen(ref.screen))));
         rows.add(entry("§fCommands", "Every command with a short explanation.", () -> Compat.setScreen(mc(), Commands.screen(ref.screen))));
         rows.add(entry("§fHUD editor", "Move, resize and hide the HUD panels.", () -> { Compat.setScreen(mc(), null); GuiEditor.open(); }));
@@ -126,7 +126,7 @@ public final class ProfitMenus {
             if (t.equals(type)) start = tabs.size();
             tabs.add(new Tab(title(t), () -> historyPage(t)));
         }
-        return new MenuScreen("History", tabs, start, parent);
+        return new MenuScreen("History", tabs, start, parent).searchable();
     }
 
     private static Page historyPage(String type) {
@@ -259,7 +259,7 @@ public final class ProfitMenus {
                 new Tab("Craft → AH", () -> craftPage(true, ref)),
                 new Tab("My orders", () -> ordersPage(ref)),
                 new Tab("Profit log", ProfitMenus::logPage)
-        ), startTab, parent);
+        ), startTab, parent).searchable();
         return ref.screen;
     }
 

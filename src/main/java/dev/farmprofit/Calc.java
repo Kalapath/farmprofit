@@ -86,7 +86,7 @@ public final class Calc {
     public static void tick(Minecraft mc) {
         if (!Config.get().signCalculator) return;
         Object screen = Compat.screen(mc);
-        if (screen == null || !screen.getClass().getName().contains("SignEditScreen") && !hasField(screen.getClass(), "messages")) return;
+        if (screen == null || !isSign(screen.getClass())) return;
         try {
             Field mf = findField(screen.getClass(), "messages");
             Field lf = findField(screen.getClass(), "line");
@@ -121,7 +121,12 @@ public final class Calc {
         Reflect.call(gui, "setOverlayMessage", c, false);
     }
 
-    private static boolean hasField(Class<?> c, String name) { return findField(c, name) != null; }
+    private static final java.util.Map<Class<?>, Boolean> SIGN = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Is this a sign editor? Checked once per screen type. */
+    private static boolean isSign(Class<?> c) {
+        return SIGN.computeIfAbsent(c, k -> k.getName().contains("SignEditScreen") || findField(k, "messages") != null);
+    }
 
     private static Field findField(Class<?> c, String name) {
         for (Class<?> k = c; k != null; k = k.getSuperclass()) {

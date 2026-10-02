@@ -11,8 +11,11 @@ import java.lang.reflect.Type;
  */
 final class ScreenOverlay {
     static Boolean works;
+    /** True if rarity colors could be drawn behind items (afterBackground event found). */
+    static Boolean behindWorks;
 
     static void register(Object screen) {
+        behindWorks = hook(screen, new String[]{"afterBackground", "afterRenderBackground"}, (s, g) -> RarityBg.drawMenu(s, g));
         try {
             Class<?> events = Class.forName("net.fabricmc.fabric.api.client.screen.v1.ScreenEvents");
             for (Method m : events.getMethods()) {
@@ -30,6 +33,7 @@ final class ScreenOverlay {
                         };
                     }
                     if (args != null && args.length >= 2) {
+                        if (behindWorks != Boolean.TRUE) try { RarityBg.drawMenu(args[0], args[1]); } catch (Throwable ignored) {}
                         try { Terminals.draw(args[0], args[1]); } catch (Throwable ignored) {}
                         try { InvSearch.draw(args[0], args[1]); } catch (Throwable ignored) {}
                     }
@@ -43,6 +47,29 @@ final class ScreenOverlay {
         } catch (Throwable t) {
             works = false;
         }
+    }
+
+    /** Registers a (screen, graphics, ...) listener on the first event with one of these names. */
+    private static boolean hook(Object screen, String[] names, java.util.function.BiConsumer<Object, Object> run) {
+        try {
+            Class<?> events = Class.forName("net.fabricmc.fabric.api.client.screen.v1.ScreenEvents");
+            for (Method m : events.getMethods()) {
+                if (m.getParameterCount() != 1 || !java.util.Arrays.asList(names).contains(m.getName())) continue;
+                Object event = m.invoke(null, screen);
+                Class<?> listener = listenerType(m.getGenericReturnType());
+                if (listener == null) continue;
+                Object proxy = Proxy.newProxyInstance(listener.getClassLoader(), new Class<?>[]{listener}, (p, method, args) -> {
+                    if (method.getDeclaringClass() == Object.class) {
+                        return switch (method.getName()) { case "hashCode" -> System.identityHashCode(p); case "equals" -> p == args[0]; default -> "SkyAssist"; };
+                    }
+                    if (args != null && args.length >= 2) try { run.accept(args[0], args[1]); } catch (Throwable ignored) {}
+                    return null;
+                });
+                event.getClass().getMethod("register", Object.class).invoke(event, proxy);
+                return true;
+            }
+        } catch (Throwable ignored) {}
+        return false;
     }
 
     private static Class<?> listenerType(Type t) {

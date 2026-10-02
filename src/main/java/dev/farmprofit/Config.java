@@ -29,6 +29,8 @@ public final class Config {
     public boolean switchHudOnArrival = true;
     @Setting(category = "General", label = "Session end message", desc = "Chat summary when a session ends and is saved.")
     public boolean announceSessionEnd = true;
+    @Setting(category = "General", label = "Count purse coins", desc = "Coins that go straight into your purse while you're active (Bountiful reforge, mob coins, Midas, coin catches...) count as profit. Read from the sidebar; menus are ignored so selling / bank don't count.")
+    public boolean trackPurse = true;
     @Setting(category = "General", label = "Number format", desc = "compact = 1.2M, full = 1,234,567.", options = {"compact", "full"})
     public String numberFormat = "compact";
     @Setting(category = "HUD", label = "Background opacity", desc = "0 = invisible, 255 = solid black.", min = 0, max = 255)
@@ -63,6 +65,8 @@ public final class Config {
     public boolean pestHighlight = true;
     @Setting(category = "Farming", label = "Trail to pests", desc = "A short particle trail from you toward each pest.")
     public boolean pestTrail = true;
+    @Setting(category = "Farming", label = "Pest glow outline", desc = "Gives pests Minecraft's glowing outline, visible through walls.")
+    public boolean pestGlow = true;
     @Setting(category = "Farming", label = "Greenhouse guide", desc = "When a mutation is planned (/greenhouse): markers on the plot you look at and a layout grid on the HUD.")
     public boolean greenhouseGuide = true;
     @Setting(category = "Farming", label = "Show visitors", desc = "Garden visitors accepted.")
@@ -173,6 +177,12 @@ public final class Config {
     public boolean tooltipScroll = true;
     @Setting(category = "Items & areas", label = "Inventory search box", desc = "A search box under every inventory and menu: matching items are highlighted, the rest dimmed.")
     public boolean inventorySearch = true;
+    @Setting(category = "Items & areas", label = "Rarity colors on items", desc = "Colors each item's slot by its rarity (white, green, blue, purple, gold, pink...) in menus.")
+    public boolean rarityBackground = true;
+    @Setting(category = "Items & areas", label = "Rarity colors on hotbar", desc = "The same rarity colors on your hotbar.")
+    public boolean rarityHotbar = true;
+    @Setting(category = "Items & areas", label = "Rarity color strength", desc = "0 = invisible, 255 = solid.", min = 0, max = 255)
+    public int rarityOpacity = 150;
     @Setting(category = "Items & areas", label = "Search descriptions too", desc = "The search box also matches text in item descriptions (e.g. \"Farming Fortune\").")
     public boolean inventorySearchLore = true;
     @Setting(category = "Items & areas", label = "Tooltip scroll speed", desc = "Lines moved per mouse-wheel notch.", min = 1, max = 20)
@@ -284,6 +294,8 @@ public final class Config {
     /** "Best now" line on the farming and mining HUD. */
     @Setting(category = "HUD", label = "Show 'Best now' tip", desc = "Best crop / ore to farm right now on the Farming and Mining HUDs.")
     public boolean showSuggestion = true;
+    @Setting(category = "Farming", label = "Best crop on Farming HUD", desc = "Show the 'Best now' crop line on the Farming HUD. The full list is always in /profit suggest.")
+    public boolean farmShowSuggestion = false;
     /** Dungeon secret finder on the Catacombs HUD. */
     @Setting(category = "Dungeons", label = "Dungeon secret finder", desc = "Room counter and nearby secret list on the Catacombs HUD.")
     public boolean secretFinder = true;

@@ -37,7 +37,7 @@ public final class Shards {
     private static final Pattern LEVEL = Pattern.compile("(?:Level|Lvl\\.?)\\s*(\\d+|[IVX]+)");
     private static final Pattern ATTR_NAME = Pattern.compile("^(.+?)\\s+([IVX]+|\\d+)$");
 
-    public record Info(String id, String name, String rarity, String attribute) {}
+    public record Info(String id, String name, String rarity, String attribute, String effect) {}
     public record Pick(Info shard, int from, int to, int shardsNeeded, double cost) {}
 
     private static final Map<String, Info> ALL = new ConcurrentHashMap<>();
@@ -46,9 +46,9 @@ public final class Shards {
 
     public static int count() { return ALL.size(); }
 
-    /** From the item data: every *_SHARD / SHARD_* item with a rarity. */
+    /** From the item data: attribute shards only (Hypixel IDs them SHARD_…; Prismarine Shard etc. are ordinary items). */
     static void ingest(String id, JsonObject item) {
-        if (!(id.startsWith("SHARD_") || id.endsWith("_SHARD")) || !item.has("lore") || !item.has("displayname")) return;
+        if (!id.startsWith("SHARD_") || !item.has("lore") || !item.has("displayname")) return;
         String name = Tracker.strip(item.get("displayname").getAsString());
         if (!name.endsWith("Shard")) return;
         var lore = item.getAsJsonArray("lore");
@@ -57,11 +57,14 @@ public final class Shards {
             String l = Tracker.strip(lore.get(i).getAsString()).trim();
             if (rarity == null) { Matcher m = RARITY.matcher(l); if (m.find()) rarity = m.group(1); }
         }
-        for (int i = 0; i < Math.min(4, lore.size()); i++) {
+        StringBuilder effect = new StringBuilder();
+        for (int i = 0; i < Math.min(10, lore.size()); i++) {
             String l = Tracker.strip(lore.get(i).getAsString()).trim();
-            if (!l.isEmpty() && !l.startsWith("ID") && !l.contains("Shard")) { attribute = l; break; }
+            if (l.isEmpty() || l.startsWith("ID") || RARITY.matcher(l).matches()) continue;
+            if (attribute == null && !l.contains("Shard")) { attribute = l; continue; }
+            if (attribute != null && effect.length() < 220 && !l.startsWith("Click") && !l.startsWith("Right-click")) effect.append(l).append(' ');
         }
-        if (rarity != null) ALL.put(id, new Info(id, name, rarity, attribute));
+        if (rarity != null) ALL.put(id, new Info(id, name, rarity, attribute, effect.toString().trim()));
     }
 
     // ---------------- your levels ----------------
@@ -147,7 +150,7 @@ public final class Shards {
         return new MenuScreen("Attribute shards", List.of(
                 new Tab("Next level", () -> page(false)),
                 new Tab("To max", () -> page(true))
-        ), 0, parent);
+        ), 0, parent).searchable();
     }
 
     private static Page page(boolean toMax) {
@@ -159,16 +162,22 @@ public final class Shards {
         for (Pick p : plan(toMax)) {
             if (i > 60) break;
             total += p.cost();
-            String tip = color(p.shard().rarity()) + p.shard().name() + "\n§7" + p.shard().rarity() + (p.shard().attribute() != null ? "\n§7" + p.shard().attribute() : "")
-                    + "\n§7Level " + p.from() + " → " + p.to() + ": " + p.shardsNeeded() + " shards";
-            rows.add(new Row(new String[]{"§8" + i++ + ". " + color(p.shard().rarity()) + p.shard().name(), "§7Lv " + p.from() + " → " + p.to(),
-                    "§f" + p.shardsNeeded() + " shards", "§6" + Fmt.coins(p.cost()), "§8" + Fmt.coins(p.cost() / (p.to() - p.from())) + "/lvl"}, tip,
+            String hunting = switch (p.shard().rarity()) { case "UNCOMMON" -> "5"; case "RARE" -> "10"; case "EPIC" -> "15"; case "LEGENDARY" -> "20"; default -> "0"; };
+            String tip = color(p.shard().rarity()) + p.shard().name() + " §7(" + p.shard().rarity().toLowerCase() + ")"
+                    + (p.shard().attribute() != null ? "\n§f" + p.shard().attribute() : "")
+                    + (!p.shard().effect().isEmpty() ? "\n§7" + p.shard().effect() : "")
+                    + "\n§7Level " + p.from() + " → " + p.to() + ": " + p.shardsNeeded() + " shards"
+                    + "\n§8Needs Hunting " + hunting + " to syphon";
+            rows.add(new Row(new String[]{"§8" + i++ + ". " + color(p.shard().rarity()) + p.shard().name(),
+                    "§f" + (p.shard().attribute() != null ? p.shard().attribute() : ""), "§7Lv " + p.from() + "→" + p.to(),
+                    "§f" + p.shardsNeeded(), "§6" + Fmt.coins(p.cost()), "§8" + Fmt.coins(p.cost() / (p.to() - p.from())) + "/lvl"}, tip,
                     List.of(new Action("§eBazaar", "Opens " + p.shard().name() + " in the Bazaar.", () -> MenuScreen.runCommand("bz " + p.shard().name())))));
         }
         footer.add("§7Cheapest first (coins per attribute level, Bazaar buy price).");
         footer.add(levels().isEmpty() ? "§eOpen your Attribute Menu (/am) or Hunting Box once so your current levels are known."
                 : "§8Your levels are from the last time you opened the Attribute Menu / Hunting Box.");
-        return new Page(new String[]{"Shard", "Level", "Needed", "Cost", ""}, new int[]{150, 70, 70, 60, 60}, rows, List.of(), footer);
+        footer.add("§8Search the box above by attribute or effect, e.g. \"Farming Fortune\" or \"Sweep\".");
+        return new Page(new String[]{"Shard", "Attribute", "Level", "Shards", "Cost", ""}, new int[]{130, 110, 50, 45, 55, 50}, rows, List.of(), footer);
     }
 
     private Shards() {}

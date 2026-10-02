@@ -51,6 +51,37 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 6.4.1 (fixes & polish)
+- Menus no longer recalculate everything on every mouse-wheel notch or search letter (talismans and craft flips were slow to scroll/search).
+- After resizing the window, tooltip scrolling and backspace in the inventory search no longer act several times at once.
+- Rarity colors are drawn **behind** the items in menus (Fabric's background event); the hotbar tint is lighter since it sits on top.
+- Items picked up while chat is open are counted again.
+- The sign calculator no longer inspects every open menu each tick; HUD text refreshes 10x a second while editing instead of every frame.
+
+## New in 6.4
+- **Sack items were counted about twice** (Hypixel repeats the same list on several parts of the "[Sacks]" message);
+  each list is now read once, so the HUD matches your sacks.
+- **Rarity colors**: every item's slot is tinted in its rarity color in menus and on the hotbar
+  (Settings → Items & areas: on/off, hotbar on/off, strength).
+- **"Best now" is off on the Farming HUD** (Farming → Best crop on Farming HUD to bring it back; `/profit suggest` still has it).
+
+## New in 6.3
+- **Pests**: a bright particle box around each pest plus Minecraft's glowing outline (visible through walls).
+- **Greenhouse**: the Mutations Sack no longer marks everything as unlocked (only mutations with Stored 1+ or in your
+  inventory count; the wrong marks from 6.2 are cleared once). The planter is now its **own HUD panel** with a real grid:
+  a colored square per block with the crop's name on it, turned so the top is the way you face, and a legend.
+- **Menus**: long text wraps onto more lines instead of being cut off, lists scroll with the mouse wheel (▲ ▼ too),
+  and every big menu has a **search box**.
+- **Talismans menu**: search by name or rarity, a rarity filter, and "Other ways" groups upgrade chains together
+  (owned tiers struck through, how to get each one on hover).
+- **Craft flips** now use all flip settings: budget, max item price, min margin, min profit, tax, min volume and share
+  (the last two only for Bazaar, the AH has no volume data).
+- **Inventory search box** is placed next to the menu (below, above or beside it) so item slots don't cover it.
+- **/shards** only lists attribute shards (no Prismarine Shard etc.), with the attribute, its effect and the Hunting
+  level needed; search by effect (e.g. "Farming Fortune").
+- **Purse coins** count as profit: Bountiful, mob coins, Midas, coin catches... (read from the sidebar while you're
+  active; menus are ignored so selling / bank don't count).
+
 ## New in 6.2
 - **Profit fix**: taking items out of your sacks (e.g. crafting Enchanted Pumpkins from sacks) no longer counts as a loss,
   and crops / ores leaving your inventory (compacting, moving to sacks) aren't listed as "Spent". Only Garden visitor

@@ -40,6 +40,13 @@ public final class Accessories {
 
     public static long scannedAt() { owned(); return scannedAt; }
 
+    /** The upgrade chain an accessory belongs to (lowest tier first), or just itself. */
+    public static List<String> chainOf(String id) { return FAMILY.getOrDefault(id, List.of(id)); }
+
+    public static Info info(String id) { return ALL.get(id); }
+
+    public static boolean owns(String id) { return owned().contains(id); }
+
     static int mpFor(String rarity) {
         return switch (rarity) {
             case "COMMON", "SPECIAL" -> 3;

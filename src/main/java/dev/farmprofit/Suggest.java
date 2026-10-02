@@ -127,6 +127,7 @@ public final class Suggest {
         if (!Config.get().showSuggestion || !Prices.loaded()) return null;
         boolean farming = Tracker.FARMING.equals(type);
         if (!farming && !Tracker.isMiningType(type)) return null;
+        if (farming && !Config.get().farmShowSuggestion) return null;
         List<Option> opts = farming ? farming() : mining();
         if (opts.isEmpty()) return farming ? null : "§7Best now: §8needs Mining Speed in the Stats tab widget";
         Option best = opts.get(0);

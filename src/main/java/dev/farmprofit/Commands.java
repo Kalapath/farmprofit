@@ -115,7 +115,7 @@ public final class Commands {
                         List.of("§8Keys: §fP §8main menu, §fO §8settings (change them in Options → Controls → Key Binds)."));
             }));
         }
-        return new MenuScreen("Commands", tabs, 0, parent);
+        return new MenuScreen("Commands", tabs, 0, parent).searchable();
     }
 
     /** "/profit note <text>" -> "/profit note " so you can type the rest. */

@@ -22,6 +22,7 @@ public final class InvSearch {
     private static EditBox box;
     private static Object boxScreen;
     public static Boolean works;
+    private static final java.util.Set<Object> KEYS_HOOKED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     private static boolean isContainer(Object screen) {
         return Reflect.call(screen, "getMenu") != Reflect.FAIL;
@@ -33,18 +34,42 @@ public final class InvSearch {
         if (!Config.get().inventorySearch || !(screenObj instanceof Screen screen) || !isContainer(screen)) return;
         try {
             Minecraft mc = Minecraft.getInstance();
-            int w = 140;
-            EditBox b = new EditBox(mc.font, width / 2 - w / 2, height - 22, w, 16, Component.literal("Search"));
+            int w = 140, h = 16;
+            // place it next to the menu so the item slots never cover it: below, else above, else to the right
+            int left = intField(screen, "leftPos"), top = intField(screen, "topPos");
+            int iw = intField(screen, "imageWidth"), ih = intField(screen, "imageHeight");
+            int bx, by;
+            if (left == Integer.MIN_VALUE || iw == Integer.MIN_VALUE) { bx = width / 2 - w / 2; by = 4; }
+            else if (top + ih + 4 + h <= height - 2) { bx = left + (iw - w) / 2; by = top + ih + 4; }
+            else if (top - h - 4 >= 2) { bx = left + (iw - w) / 2; by = top - h - 4; }
+            else { bx = Math.min(width - w - 4, left + iw + 6); by = top + 4; }
+            EditBox b = new EditBox(mc.font, bx, by, w, h, Component.literal("Search"));
             b.setMaxLength(40);
             b.setHint(Component.literal("§8Search items..."));
             b.setValue(term);
             b.setResponder(t -> term = t);
-            Class<?> screens = Class.forName("net.fabricmc.fabric.api.client.screen.v1.Screens");
-            Object list = screens.getMethod("getButtons", Screen.class).invoke(null, screen);
-            ((List<Object>) list).add(b);
+            boolean added = false;
+            try {
+                Class<?> screens = Class.forName("net.fabricmc.fabric.api.client.screen.v1.Screens");
+                Object list = screens.getMethod("getButtons", Screen.class).invoke(null, screen);
+                ((List<Object>) list).add(b);
+                added = true;
+            } catch (Throwable ignored) {}
+            if (!added) {                                              // backup: the menu's own "add widget" method
+                for (Class<?> k = screen.getClass(); k != null && !added; k = k.getSuperclass()) {
+                    for (var m : k.getDeclaredMethods()) {
+                        if (!m.getName().equals("addRenderableWidget") || m.getParameterCount() != 1) continue;
+                        m.setAccessible(true);
+                        m.invoke(screen, b);
+                        added = true;
+                        break;
+                    }
+                }
+            }
+            if (!added) throw new IllegalStateException("couldn't add the search box");
             box = b;
             boxScreen = screen;
-            blockKeysWhileTyping(screen);
+            if (KEYS_HOOKED.add(screen)) blockKeysWhileTyping(screen);    // once per menu, even after a resize
             works = true;
         } catch (Throwable t) {
             works = false;

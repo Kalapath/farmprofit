@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.4.1
+- Menu caching (smooth scroll/search), duplicate screen hooks after resize, rarity behind items, chat-open counting, small performance fixes.
+
+## 6.4.0
+- Sack double count fixed, rarity colors in menus and hotbar, best crop removed from the Farming HUD.
+
+## 6.3.0
+- Pest box + glow, greenhouse sack fix and grid panel, wrapping/scrolling/search in menus, talismans search + grouping, craft flips use all settings, search box placement, attribute shards only, purse coins as profit.
+
 ## 6.2.0
 - Profit fix for crafting from sacks, rare drops shown once, item names, pest highlighting, /greenhouse, craft flips (Bazaar + AH), /shards, talismans other ways + NPC prices, inventory search, daily/weekly/monthly profit, /dungeon info.
 

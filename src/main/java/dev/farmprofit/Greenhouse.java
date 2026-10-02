@@ -100,7 +100,8 @@ public final class Greenhouse {
                 if (Files.exists(FILE)) {
                     Map<String, Object> m = Config.GSON.fromJson(Files.readString(FILE), new TypeToken<Map<String, Object>>() {}.getType());
                     have = new LinkedHashSet<>();
-                    if (m.get("have") instanceof List<?> l) for (Object o : l) have.add(String.valueOf(o));
+                    boolean fixed = m.get("v") instanceof Number v && v.intValue() >= 2;
+                    if (fixed && m.get("have") instanceof List<?> l) for (Object o : l) have.add(String.valueOf(o));   // 6.2.0 marked too many: start over once
                     if (m.get("target") instanceof String t) target = t;
                 }
             } catch (Exception ignored) {}
@@ -113,6 +114,7 @@ public final class Greenhouse {
         try {
             Files.createDirectories(Config.DIR);
             Map<String, Object> m = new LinkedHashMap<>();
+            m.put("v", 2);
             m.put("have", new ArrayList<>(have()));
             m.put("target", target);
             Files.writeString(FILE, Config.GSON.toJson(m));
@@ -120,14 +122,41 @@ public final class Greenhouse {
     }
 
     /** Mutations seen in your inventory or in any menu (Mutations Sack, Crop Analyzer...) count as unlocked. */
-    static void noticeItems(List<ItemStack> items) {
+    private static final java.util.regex.Pattern STORED = java.util.regex.Pattern.compile("Stored:\\s*([\\d,]+)");
+
+    /**
+     * A mutation counts as unlocked only if you actually have one: in your inventory, or with "Stored: 1+" in a sack.
+     * (The Mutations Sack lists every mutation, including ones you've never had, with Stored: 0.)
+     */
+    static void noticeItems(List<ItemStack> items, boolean inventory) {
         boolean changed = false;
         for (ItemStack is : items) {
             String n = Tracker.strip(is.getHoverName().getString()).replaceAll("^\\d+x ", "").trim();
-            if (ALL.containsKey(n) && have().add(n)) changed = true;
+            if (!ALL.containsKey(n) || have().contains(n)) continue;
+            boolean owned = inventory;
+            if (!inventory) {
+                for (String l : ItemIds.lore(is)) {
+                    java.util.regex.Matcher m = STORED.matcher(l);
+                    if (m.find()) { owned = Long.parseLong(m.group(1).replace(",", "")) > 0; break; }
+                }
+            }
+            if (owned) { have().add(n); changed = true; }
         }
         if (changed) save();
     }
+
+    private static int invTick;
+
+    /** Mutations you're carrying count as unlocked (checked every 2 seconds). */
+    static void noticeInventory(Minecraft mc) {
+        if (mc.player == null || ++invTick % 40 != 0) return;
+        List<ItemStack> items = new ArrayList<>();
+        var inv = mc.player.getInventory();
+        for (int i = 0; i < 36; i++) { var st = inv.getItem(i); if (!st.isEmpty()) items.add(st); }
+        noticeItems(items, true);
+    }
+
+    public static void resetMarks() { have().clear(); save(); }
 
     public static boolean has(String name) { return BASE.contains(name) || have().contains(name); }
 
@@ -201,41 +230,63 @@ public final class Greenhouse {
         }
     }
 
-    /** HUD panel: what to plant, as a grid that turns with you (top row = in front of the plot). */
+    /** Box colors (ARGB) and matching text colors for each different thing to plant. */
+    private static final int[] FILL = {0xD02E8B3A, 0xD0C06010, 0xD02A5DB0, 0xD08A2BB0, 0xD0208A8A, 0xD0A08020};
+    private static final String[] TEXT = {"§a", "§6", "§9", "§d", "§3", "§e"};
+
+    /** One cell of the planting grid as drawn on screen. */
+    public record Cell(int col, int row, String label, int fill) {}
+    public record Grid(int size, List<Cell> cells) {}
+
+    public static boolean active() {
+        return target != null && ALL.containsKey(target) && Config.get().greenhouseGuide && Tracker.FARMING.equals(Tracker.area);
+    }
+
+    /** Text part of the Greenhouse panel (title, surface, legend). */
     public static void addHudLines(Hud.Lines out) {
-        if (target == null || !Config.get().greenhouseGuide || !Tracker.FARMING.equals(Tracker.area)) return;
+        if (!active()) return;
         Mutation m = ALL.get(target);
-        if (m == null) return;
-        out.add("§a§lGreenhouse §7→ §f" + m.name() + " §8(on " + m.surface() + ")");
-        if (m.special() != null) { out.add(" §7" + m.special()); return; }
-        if (m.needs().isEmpty()) { out.add(" §7Plant nothing around it (it likes being alone)."); return; }
-        int ci = 0;
-        String[] codes = {"§a", "§6", "§f", "§b"};
-        StringBuilder legend = new StringBuilder(" ");
-        for (var e : m.needs().entrySet()) legend.append(codes[ci++ % codes.length]).append("● ").append(e.getValue()).append("x ").append(e.getKey()).append("  ");
-        out.add(legend.toString().trim().isEmpty() ? "" : legend.toString());
-        if (m.size() == 1) {
-            // a 3x3 grid rotated to where you look
-            Minecraft mc = Minecraft.getInstance();
-            float yaw = mc.player != null ? mc.player.getYRot() : 0;
-            int rot = Math.floorMod(Math.round(yaw / 90f), 4);      // 0=south, 1=west, 2=north, 3=east
-            String[][] grid = new String[3][3];
-            for (String[] row : grid) java.util.Arrays.fill(row, "§8 · ");
-            grid[1][1] = "§f§l ✦ ";
-            Map<String, String> col = new LinkedHashMap<>();
-            ci = 0;
-            for (String need : m.needs().keySet()) col.put(need, codes[ci++ % codes.length]);
-            for (Object[] cell : layout(m)) {
-                int dx = (int) cell[0], dz = (int) cell[1];
-                int sx = dx, sz = dz;                              // turn so "up" on screen is the way you face
-                for (int r = 0; r < (rot + 2) % 4; r++) { int t = sx; sx = -sz; sz = t; }
-                grid[sz + 1][sx + 1] = col.get((String) cell[2]) + shortName((String) cell[2]);
-            }
-            for (String[] row : grid) out.add("  " + String.join(" ", row));
-            out.add(" §8✦ = leave empty (look at it to see markers)");
-        } else {
-            out.add(" §7" + m.size() + "x" + m.size() + " mutation: leave a " + m.size() + "x" + m.size() + " empty area, plant the crops in the ring around it.");
+        out.add("§a§lGreenhouse §7→ §f" + m.name());
+        out.add("§7Plant on: §f" + m.surface() + (m.size() > 1 ? " §8(" + m.size() + "x" + m.size() + ")" : ""));
+        if (m.special() != null) { out.add("§7" + m.special()); return; }
+        if (m.needs().isEmpty()) { out.add("§7Keep every block around it empty."); return; }
+        int i = 0;
+        for (var e : m.needs().entrySet()) {
+            out.add(TEXT[i % TEXT.length] + "■ §f" + e.getValue() + "x " + e.getKey() + (has(e.getKey()) ? "" : " §c(not unlocked)"));
+            i++;
         }
+        out.add("§f✦ §7= leave empty  §8(top = the way you face)");
+    }
+
+    /** The planting grid, turned so the top is the direction you're facing. */
+    public static Grid grid() {
+        if (!active()) return null;
+        Mutation m = ALL.get(target);
+        if (m.special() != null) return null;
+        int s = m.size(), n = s + 2;
+        Minecraft mc = Minecraft.getInstance();
+        float yaw = mc.player != null ? Math.round(mc.player.getYRot() / 90f) * 90f : 180f;
+        double fx = -Math.sin(Math.toRadians(yaw)), fz = Math.cos(Math.toRadians(yaw));   // facing
+        double rx = -fz, rz = fx;                                                            // to your right
+        double c = (s - 1) / 2.0;
+        Map<String, Integer> colorOf = new LinkedHashMap<>();
+        for (String need : m.needs().keySet()) colorOf.put(need, colorOf.size());
+        List<Cell> cells = new ArrayList<>();
+        java.util.function.BiFunction<Double, Double, int[]> place = (dx, dz) -> {
+            double vx = dx - c, vz = dz - c;
+            double sx = vx * rx + vz * rz, sy = -(vx * fx + vz * fz);
+            return new int[]{(int) Math.round(sx + (n - 1) / 2.0), (int) Math.round(sy + (n - 1) / 2.0)};
+        };
+        for (int dx = 0; dx < s; dx++) for (int dz = 0; dz < s; dz++) {
+            int[] p = place.apply((double) dx, (double) dz);
+            cells.add(new Cell(p[0], p[1], "✦", 0xD0E0E0E0));
+        }
+        for (Object[] cell : layout(m)) {
+            int[] p = place.apply((double) (int) cell[0], (double) (int) cell[1]);
+            String need = (String) cell[2];
+            cells.add(new Cell(p[0], p[1], shortName(need), FILL[colorOf.get(need) % FILL.length]));
+        }
+        return new Grid(n, cells);
     }
 
     // ---------------- menu ----------------
@@ -245,7 +296,7 @@ public final class Greenhouse {
         List<Tab> tabs = new ArrayList<>();
         tabs.add(new Tab("Plan", () -> planPage(ref)));
         for (String r : new String[]{"COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY"}) tabs.add(new Tab(cap(r), () -> listPage(r, ref)));
-        ref[0] = new MenuScreen("Greenhouse helper", tabs, target == null ? 1 : 0, parent);
+        ref[0] = new MenuScreen("Greenhouse helper", tabs, target == null ? 1 : 0, parent).searchable();
         return ref[0];
     }
 

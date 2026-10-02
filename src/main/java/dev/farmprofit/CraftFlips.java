@@ -43,6 +43,7 @@ public final class CraftFlips {
                 list.append(i.getValue()).append("x ").append(Prices.nameOf(i.getKey().replace('-', ':'))).append(", ");
             }
             if (!ok || cost <= 0) continue;
+            if (c.bzMaxPrice > 0 && cost > c.bzMaxPrice) continue;              // Max item price: cost of one craft
             double sell, perHour;
             String note = null;
             if (!toAuction) {
@@ -61,7 +62,7 @@ public final class CraftFlips {
                 sell = bin * (1 - ahTax) * makes;
                 perHour = 0;
                 note = "AH demand unknown — check recent sales";
-                if (cost > c.bzBudget) continue;
+                if (cost > c.bzBudget) continue;                                  // Budget: must afford one craft
             }
             double profit = sell - cost;
             if (profit <= c.craftFlipMinProfit) continue;

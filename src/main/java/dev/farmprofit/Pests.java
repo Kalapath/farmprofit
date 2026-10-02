@@ -19,7 +19,7 @@ public final class Pests {
     private static final Pattern PEST_TAG = Pattern.compile("ൠ\\s*([A-Za-z ]+?)(?:\\s+[\\d.,]+[kKmM]?(?:/[\\d.,]+[kKmM]?)?\\s*❤)?\\s*$");
     private static final String[] ARROWS = {"↑", "↗", "→", "↘", "↓", "↙", "←", "↖"};
 
-    public record Pest(String name, double x, double y, double z) {}
+    public record Pest(String name, double x, double y, double z, Entity mob) {}
 
     private static final List<Pest> pests = new ArrayList<>();
     private static int tick;
@@ -30,8 +30,11 @@ public final class Pests {
             return;
         }
         if (++tick % 4 == 0) scan(mc);                      // 5x a second
-        if (tick % 6 != 0) return;
+        if (tick % 3 != 0) return;                          // redraw often so the box stays bright
         for (Pest p : pests) {
+            // glowing outline on the pest itself (visible through walls); Hypixel may reset it, so it's re-applied
+            if (p.mob() != null && Config.get().pestGlow) Reflect.call(p.mob(), "setGlowingTag", true);
+            box(p);
             Particles.pillar(Particles.FIRE, p.x(), p.y() + 0.6, p.z());
             if (Config.get().pestTrail) {
                 // a short dotted trail from you toward the pest, so you can follow it
@@ -57,10 +60,42 @@ public final class Pests {
             Matcher m = PEST_TAG.matcher(tag);
             if (tag.contains("ൠ") && m.find()) name = m.group(1).trim();
             if (name == null) continue;
-            pests.add(new Pest(name, e.getX(), e.getY(), e.getZ()));
+            pests.add(new Pest(name, e.getX(), e.getY(), e.getZ(), mobUnder(e, it)));
         }
         double px = mc.player.getX(), pz = mc.player.getZ();
         pests.sort((a, b) -> Double.compare(Math.hypot(a.x() - px, a.z() - pz), Math.hypot(b.x() - px, b.z() - pz)));
+    }
+
+    /** The actual pest mob under its floating name tag (the tag itself is an invisible armor stand). */
+    private static Entity mobUnder(Entity tag, Iterable<?> all) {
+        Entity best = null;
+        double bestD = 3.5;
+        for (Object o : all) {
+            if (!(o instanceof Entity e) || e == tag) continue;
+            String type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath();
+            if (type.equals("armor_stand") || type.equals("player") || type.contains("display")) continue;
+            double d = Math.sqrt(Math.pow(e.getX() - tag.getX(), 2) + Math.pow(e.getY() - tag.getY(), 2) + Math.pow(e.getZ() - tag.getZ(), 2));
+            if (d < bestD) { bestD = d; best = e; }
+        }
+        return best;
+    }
+
+    /** A box of bright particles along the 12 edges of the pest's hitbox (or a 1-block box at its tag). */
+    private static void box(Pest p) {
+        double x1, y1, z1, x2, y2, z2;
+        if (p.mob() != null) {
+            var bb = p.mob().getBoundingBox();
+            x1 = bb.minX - 0.15; y1 = bb.minY - 0.1; z1 = bb.minZ - 0.15; x2 = bb.maxX + 0.15; y2 = bb.maxY + 0.15; z2 = bb.maxZ + 0.15;
+        } else {
+            x1 = p.x() - 0.5; y1 = p.y() - 1.2; z1 = p.z() - 0.5; x2 = p.x() + 0.5; y2 = p.y() - 0.2; z2 = p.z() + 0.5;
+        }
+        var c = Particles.WHITE;
+        double[][] corners = {{x1, y1, z1}, {x2, y1, z1}, {x2, y1, z2}, {x1, y1, z2}, {x1, y2, z1}, {x2, y2, z1}, {x2, y2, z2}, {x1, y2, z2}};
+        int[][] edges = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+        for (int[] e : edges) {
+            double[] a = corners[e[0]], b = corners[e[1]];
+            Particles.line(c, a[0], a[1], a[2], b[0], b[1], b[2]);
+        }
     }
 
     private static String arrow(Pest p, Minecraft mc) {

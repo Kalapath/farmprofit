@@ -326,6 +326,7 @@ public final class Tracker {
         WorldPuzzles.tick(mc);
         Pests.tick(mc);
         Greenhouse.tick(mc);
+        Greenhouse.noticeInventory(mc);
         WorldPuzzles.quizTick();
         Calc.tick(mc);
 
@@ -335,6 +336,7 @@ public final class Tracker {
             finishCostCheck(now);
         }
 
+        if (Compat.screen(mc) != null && !(Compat.screen(mc) instanceof net.minecraft.client.gui.screens.ChatScreen)) lastMenuTime = System.currentTimeMillis();
         Map<String, Integer> inv = scanInventory(mc);
         Session target = mostRecent();
         boolean inMenu = Compat.screen(mc) != null;
@@ -472,7 +474,9 @@ public final class Tracker {
                 if (fl.find()) dungeonFloor = fl.group(1);
                 Matcher m = PURSE.matcher(line);
                 if (m.find()) {
-                    purse = Long.parseLong(m.group(1).replace(",", ""));
+                    long newPurse = Long.parseLong(m.group(1).replace(",", ""));
+                    onPurse(newPurse);
+                    purse = newPurse;
                     long now = System.currentTimeMillis();
                     PURSE_LOG.addLast(new long[]{now, purse});
                     while (!PURSE_LOG.isEmpty() && now - PURSE_LOG.peekFirst()[0] > 10_000) PURSE_LOG.removeFirst();
@@ -483,6 +487,25 @@ public final class Tracker {
             // sidebar not readable on this version: automatic slayer costs just stay off
         }
     }
+
+    private static long lastPurseSeen = -1;
+    private static long lastMenuTime;
+
+    /** Purse went up while you're active and no menu was open recently: Bountiful, mob coins, coin catches... */
+    private static void onPurse(long newPurse) {
+        long before = lastPurseSeen;
+        lastPurseSeen = newPurse;
+        if (!Config.get().trackPurse || before < 0 || newPurse <= before) return;
+        long gain = newPurse - before;
+        long now = System.currentTimeMillis();
+        if (now - lastMenuTime < 3000 || gain > 20_000_000) return;          // selling, bank, trades... or a big transfer
+        Session s = mostRecent();
+        if (s == null || now - s.lastActivity > 15_000) return;
+        s.purseCoins += gain;
+    }
+
+    /** True when purse coins are being tracked (then coin catches / dug coins aren't added again). */
+    public static boolean purseTracked() { return Config.get().trackPurse && purse >= 0; }
 
     private static String text(Object component) {
         return component instanceof Component c ? c.getString() : "";
@@ -702,7 +725,7 @@ public final class Tracker {
             Session s = activity(DIANA);
             s.burrows++;
             Matcher dc = DUG_COINS.matcher(plain);
-            if (dc.find()) s.coins += Long.parseLong(dc.group(1).replace(",", ""));
+            if (dc.find() && !purseTracked()) s.coins += Long.parseLong(dc.group(1).replace(",", ""));
             Debug.saw("burrow");
             if (!plain.contains("DROP!")) return;
         }
@@ -715,7 +738,7 @@ public final class Tracker {
             Debug.saw("catch");
             if (s == null) return;
             Matcher coins = COINS.matcher(fc.group(1).trim());
-            if (coins.matches()) { if (Config.get().fishCountCoins) s.coins += Long.parseLong(coins.group(1).replace(",", "")); }
+            if (coins.matches()) { if (Config.get().fishCountCoins && !purseTracked()) s.coins += Long.parseLong(coins.group(1).replace(",", "")); }
             else addRare(s, fc.group(1));
             return;
         }
@@ -736,6 +759,9 @@ public final class Tracker {
         if (target == null) return;
         List<Component> hovers = new ArrayList<>();
         collectHovers(message, hovers);
+        // Hypixel puts the same hover list on several pieces of the message: read each different list once
+        java.util.Set<String> seenHovers = new java.util.HashSet<>();
+        hovers.removeIf(h -> !seenHovers.add(h.getString()));
         for (Component hover : hovers) {
             for (String line : strip(hover.getString()).split("\n")) {
                 Matcher m = SACK_LINE.matcher(line);

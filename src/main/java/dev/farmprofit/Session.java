@@ -47,6 +47,8 @@ public final class Session {
     public String note;
     /** Coins found directly (fishing treasure etc.) */
     public double coins;
+    /** Coins that went straight into your purse while active (Bountiful, mob coins, Midas...). */
+    public double purseCoins;
     /** Time actually spent active; -1 for sessions saved by older versions. */
     public long activeMs = -1;
     /** Attribute shards sent to the Hunting Box */
@@ -88,7 +90,7 @@ public final class Session {
     public boolean isDiana() { return Tracker.DIANA.equals(type); }
 
     public boolean isEmpty() {
-        return totalBreaks() == 0 && totalKills() == 0 && runs == 0 && burrows == 0 && visitors == 0 && items.isEmpty() && coins == 0 && (rareDrops == null || rareDrops.isEmpty())
+        return totalBreaks() == 0 && totalKills() == 0 && purseCoins == 0 && runs == 0 && burrows == 0 && visitors == 0 && items.isEmpty() && coins == 0 && (rareDrops == null || rareDrops.isEmpty())
                 && (shards == null || shards.isEmpty());
     }
 
@@ -148,6 +150,7 @@ public final class Session {
         double total = 0;
         for (var e : items.entrySet()) if (!ignored(e.getKey())) total += e.getValue() * Prices.price(e.getKey());
         total += coins;
+        total += purseCoins;
         total += copper * Config.get().copperValue;
         if (rareDrops != null) for (var e : rareDrops.entrySet()) total += rareValue(e.getKey(), e.getValue());
         total += shardValue();

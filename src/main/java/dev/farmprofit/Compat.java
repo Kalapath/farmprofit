@@ -28,6 +28,19 @@ final class Compat {
 
     static boolean noScreen(Minecraft mc) { return screen(mc) == null; }
 
+    /** True when the HUD is hidden with F1. (26.1: options.hideGui field; moved in 26.2.) */
+    static boolean hudHidden(Minecraft mc) {
+        Object options = Reflect.field(mc, "options");
+        for (Object holder : new Object[]{options, Reflect.field(mc, "gui")}) {
+            if (holder == null || holder == Reflect.FAIL) continue;
+            Object v = Reflect.field(holder, "hideGui");
+            if (v instanceof Boolean b) return b;
+            v = Reflect.call(holder, new String[]{"hideGui", "isHideGui", "isGuiHidden", "guiHidden"});
+            if (v instanceof Boolean b) return b;
+        }
+        return false;
+    }
+
     /** Opens a screen (or closes it with null). */
     static void setScreen(Minecraft mc, Object screen) {
         for (var m : Minecraft.class.getMethods()) {

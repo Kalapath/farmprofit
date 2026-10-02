@@ -125,7 +125,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                     Config cfg = Config.get();
                     boolean chat = Compat.screen(mc) instanceof ChatScreen;
                     if (!chat) HudEditor.reset();
-                    if (!cfg.hudEnabled || mc.options.hideGui || mc.player == null) return;
+                    if (!cfg.hudEnabled || Compat.hudHidden(mc) || mc.player == null) return;
 
                     List<HudEditor.Box> boxes = HudRenderer.layout(mc);
                     if (boxes.isEmpty()) return;

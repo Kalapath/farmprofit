@@ -54,8 +54,17 @@ public final class RarityBg {
         return Integer.MIN_VALUE;
     }
 
-    /** Menus: a colored square in every slot holding an item with a rarity. */
-    static void drawMenu(Object screen, Object g) {
+    /** Draws an item (and its stack count) on top of a color. False if this version can't. */
+    static boolean drawItem(Object g, ItemStack stack, int x, int y) {
+        Object r = Reflect.call(g, new String[]{"item", "renderItem"}, stack, x, y);
+        if (r == Reflect.FAIL) return false;
+        Object font = Minecraft.getInstance().font;
+        Reflect.call(g, new String[]{"itemDecorations", "renderItemDecorations"}, font, stack, x, y);
+        return true;
+    }
+
+    /** Menus: a colored square in every slot with a rarity, with the item drawn again on top of it. */
+    static void drawMenu(Object screen, Object g, int mouseX, int mouseY) {
         if (!Config.get().rarityBackground) return;
         int left = intField(screen, "leftPos"), top = intField(screen, "topPos");
         if (left == Integer.MIN_VALUE) return;
@@ -68,11 +77,23 @@ public final class RarityBg {
             if (c < 0) continue;
             int sx = intField(slot, "x"), sy = intField(slot, "y");
             if (sx == Integer.MIN_VALUE) continue;
-            Reflect.call(g, "fill", left + sx, top + sy, left + sx + 16, top + sy + 16, argb(c, ScreenOverlay.behindWorks != Boolean.TRUE));
+            int x = left + sx, y = top + sy;
+            if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16) continue;   // keep the hover highlight
+            if (InvSearch.active() && !InvSearch.matches(stack)) continue;                     // search dims these instead
+            Reflect.call(g, "fill", x, y, x + 16, y + 16, argb(c, false));
+            if (!drawItem(g, stack, x, y)) Reflect.call(g, "fill", x, y, x + 16, y + 16, 0);   // (couldn't redraw: color only)
         }
     }
 
-    /** Hotbar: same colors under the 9 hotbar slots. Graphics is passed straight in (HUD callback). */
+    /** Hotbar: colored square, then the item again on top. */
+    static void drawHotbar(Minecraft mc, Object g) {
+        for (int[] b : hotbarBoxes(mc)) {
+            if (b == null) continue;
+            Reflect.call(g, "fill", b[0], b[1], b[2], b[3], b[4]);
+            drawItem(g, mc.player.getInventory().getItem(b[5]), b[0], b[1]);
+        }
+    }
+
     static int[][] hotbarBoxes(Minecraft mc) {
         if (!Config.get().rarityBackground || !Config.get().rarityHotbar || mc.player == null) return new int[0][];
         int w = mc.getWindow().getGuiScaledWidth(), h = mc.getWindow().getGuiScaledHeight();
@@ -81,7 +102,7 @@ public final class RarityBg {
             int c = color(mc.player.getInventory().getItem(i));
             if (c < 0) continue;
             int x = w / 2 - 90 + i * 20 + 2, y = h - 19;
-            out[i] = new int[]{x, y, x + 16, y + 16, argb(c, true)};
+            out[i] = new int[]{x, y, x + 16, y + 16, argb(c, false), i};
         }
         return out;
     }

@@ -12,7 +12,7 @@ import java.util.Map;
 final class HudRenderer {
     /** Edit mode (/profit gui): every panel is shown with an outline, even empty or hidden ones. */
     static boolean editMode;
-    static final int CELL_W = 36, CELL_H = 18;
+    static final int CELL_W = 52, CELL_H = 24;
     private static final Map<String, Hud.Lines> cache = new HashMap<>();
     private static long cacheTime;
 

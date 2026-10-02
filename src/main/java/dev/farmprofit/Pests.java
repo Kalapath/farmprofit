@@ -87,14 +87,14 @@ public final class Pests {
             var bb = p.mob().getBoundingBox();
             x1 = bb.minX - 0.15; y1 = bb.minY - 0.1; z1 = bb.minZ - 0.15; x2 = bb.maxX + 0.15; y2 = bb.maxY + 0.15; z2 = bb.maxZ + 0.15;
         } else {
-            x1 = p.x() - 0.5; y1 = p.y() - 1.2; z1 = p.z() - 0.5; x2 = p.x() + 0.5; y2 = p.y() - 0.2; z2 = p.z() + 0.5;
+            x1 = p.x() - 0.6; y1 = p.y() - 1.6; z1 = p.z() - 0.6; x2 = p.x() + 0.6; y2 = p.y() + 0.2; z2 = p.z() + 0.6;
         }
-        var c = Particles.WHITE;
+        var c = Particles.dust(Config.get().pestBoxColor(), 1.2f);
         double[][] corners = {{x1, y1, z1}, {x2, y1, z1}, {x2, y1, z2}, {x1, y1, z2}, {x1, y2, z1}, {x2, y2, z1}, {x2, y2, z2}, {x1, y2, z2}};
         int[][] edges = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
         for (int[] e : edges) {
             double[] a = corners[e[0]], b = corners[e[1]];
-            Particles.line(c, a[0], a[1], a[2], b[0], b[1], b[2]);
+            Particles.dense(c, a[0], a[1], a[2], b[0], b[1], b[2], 0.18);
         }
     }
 

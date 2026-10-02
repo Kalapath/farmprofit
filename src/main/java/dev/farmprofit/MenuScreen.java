@@ -162,7 +162,11 @@ public final class MenuScreen extends Screen {
             if (row.tooltip() != null) hay.append(row.tooltip());
             if (Tracker.strip(hay.toString()).toLowerCase(java.util.Locale.ROOT).contains(q)) rowsAll.add(row);
         }
-        int footerH = p.footer().size() * 11 + 30;
+        // footer text wraps onto as many lines as it needs (nothing gets cut off)
+        int footerW = right - left - 160;
+        List<String> footerLines = new ArrayList<>();
+        for (String f : p.footer()) footerLines.addAll(wrap(f, Math.max(120, footerW)));
+        int footerH = footerLines.size() * 11 + 30;
         int listTop = y, listBottom = height - footerH;
         listHeight = listBottom - listTop;
         if (rowsAll.isEmpty()) addRenderableWidget(new StringWidget(left, y + 4, right - left, 10,
@@ -233,8 +237,8 @@ public final class MenuScreen extends Screen {
 
         // footer
         int fy = height - footerH + 6;
-        for (String f : p.footer()) {
-            addRenderableWidget(new StringWidget(left, fy, right - left - 90, 10, Component.literal(f), font));
+        for (String f : footerLines) {
+            addRenderableWidget(new StringWidget(left, fy, Math.max(30, font.width(f) + 2), 10, Component.literal(f), font));
             fy += 11;
         }
         closeButton(right);

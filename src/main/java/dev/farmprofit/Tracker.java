@@ -776,6 +776,7 @@ public final class Tracker {
                     continue;
                 }
                 target.addItem(m.group(2).trim(), amount);
+                Greenhouse.noticeName(m.group(2).trim());
             }
         }
     }

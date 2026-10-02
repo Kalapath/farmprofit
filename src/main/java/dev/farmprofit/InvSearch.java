@@ -21,7 +21,11 @@ public final class InvSearch {
     private static String term = "";
     private static EditBox box;
     private static Object boxScreen;
-    public static Boolean works;
+    public static Boolean works, keysWork;
+
+    public static boolean active() { return Config.get().inventorySearch && term != null && !term.isBlank(); }
+
+    public static boolean matches(ItemStack stack) { return matches(stack, term.toLowerCase(Locale.ROOT).trim()); }
     private static final java.util.Set<Object> KEYS_HOOKED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     private static boolean isContainer(Object screen) {
@@ -91,17 +95,21 @@ public final class InvSearch {
                     if (method.getDeclaringClass() == Object.class) {
                         return switch (method.getName()) { case "hashCode" -> System.identityHashCode(p); case "equals" -> p == args[0]; default -> "SearchKeys"; };
                     }
-                    if (box == null || !box.isFocused() || args == null || args.length < 2) return true;
+                    if (box == null || !box.isFocused() || args == null || args.length < 2) return true;   // not typing: keys work normally
                     int key = keyCode(args[1]);
-                    if (key == 256) return true;                          // Escape still closes the menu
+                    if (key == 256) { box.setFocused(false); return false; }   // Escape: leave the search box (menu stays open)
                     Object[] rest = java.util.Arrays.copyOfRange(args, 1, args.length);
                     Reflect.call(box, "keyPressed", rest);               // backspace, arrows, ctrl+a ... go to the box
                     return false;                                          // and nothing else reacts to the key
                 });
                 event.getClass().getMethod("register", Object.class).invoke(event, proxy);
+                keysWork = true;
                 return;
             }
-        } catch (Throwable ignored) {}
+            keysWork = false;
+        } catch (Throwable ignored) {
+            keysWork = false;
+        }
     }
 
     private static int keyCode(Object o) {
@@ -119,7 +127,7 @@ public final class InvSearch {
 
     /** Called after a menu is drawn: highlight matches, dim the rest. */
     static void draw(Object screen, Object g) {
-        if (!Config.get().inventorySearch || term == null || term.isBlank() || !isContainer(screen)) return;
+        if (!active() || !isContainer(screen)) return;
         String q = term.toLowerCase(Locale.ROOT).trim();
         int left = intField(screen, "leftPos"), top = intField(screen, "topPos");
         if (left == Integer.MIN_VALUE) return;
@@ -132,12 +140,12 @@ public final class InvSearch {
             if (sx == Integer.MIN_VALUE || !(st instanceof ItemStack stack) || stack.isEmpty()) continue;
             int x = left + sx, y = top + sy;
             if (matches(stack, q)) {
-                Reflect.call(g, "fill", x - 1, y - 1, x + 17, y, 0xFF55FF55);
-                Reflect.call(g, "fill", x - 1, y + 16, x + 17, y + 17, 0xFF55FF55);
-                Reflect.call(g, "fill", x - 1, y, x, y + 16, 0xFF55FF55);
-                Reflect.call(g, "fill", x + 16, y, x + 17, y + 16, 0xFF55FF55);
+                Reflect.call(g, "fill", x - 1, y - 1, x + 17, y + 1, 0xFF55FF55);          // thick bright green frame
+                Reflect.call(g, "fill", x - 1, y + 15, x + 17, y + 17, 0xFF55FF55);
+                Reflect.call(g, "fill", x - 1, y + 1, x + 1, y + 15, 0xFF55FF55);
+                Reflect.call(g, "fill", x + 15, y + 1, x + 17, y + 15, 0xFF55FF55);
             } else {
-                Reflect.call(g, "fill", x, y, x + 16, y + 16, 0xB0000000);
+                Reflect.call(g, "fill", x, y, x + 16, y + 16, 0xC8101010);
             }
         }
     }

@@ -39,6 +39,32 @@ public final class Greenhouse {
 
     public static final Map<String, Mutation> ALL = new LinkedHashMap<>();
 
+    /** Block each regular crop is planted on in the Greenhouse. */
+    private static final Map<String, String> BASE_SURFACE = Map.ofEntries(
+            Map.entry("Wheat", "Farmland"), Map.entry("Carrot", "Farmland"), Map.entry("Potato", "Farmland"),
+            Map.entry("Pumpkin", "Farmland"), Map.entry("Melon", "Farmland"), Map.entry("Cocoa Beans", "Farmland"),
+            Map.entry("Moonflower", "Farmland"), Map.entry("Sunflower", "Farmland"), Map.entry("Wild Rose", "Farmland"),
+            Map.entry("Fermento", "Farmland"), Map.entry("Sugar Cane", "Sand"), Map.entry("Cactus", "Sand"),
+            Map.entry("Nether Wart", "Soul Sand"), Map.entry("Dead Plant", "Soul Sand"),
+            Map.entry("Red Mushroom", "Mycelium"), Map.entry("Brown Mushroom", "Mycelium"),
+            Map.entry("Fire", "light it with Flint and Steel"));
+
+    /** What a crop or mutation is planted on. */
+    public static String surfaceOf(String name) {
+        Mutation m = ALL.get(name);
+        if (m != null) return m.surface();
+        return BASE_SURFACE.getOrDefault(name, "Farmland");
+    }
+
+    private static String shortSurface(String s) {
+        if (s.startsWith("Soul")) return "Soul Sand";
+        if (s.startsWith("Myc")) return "Mycelium";
+        if (s.startsWith("End")) return "End Stone";
+        if (s.startsWith("light")) return "Fire";
+        if (s.startsWith("Farmland or")) return "Farm/Dirt";
+        return s;
+    }
+
     private static void m(String name, String rarity, String surface, int size, Object... needs) {
         LinkedHashMap<String, Integer> map = new LinkedHashMap<>();
         for (int i = 0; i + 1 < needs.length; i += 2) map.put((String) needs[i], (Integer) needs[i + 1]);
@@ -129,20 +155,42 @@ public final class Greenhouse {
      * (The Mutations Sack lists every mutation, including ones you've never had, with Stored: 0.)
      */
     static void noticeItems(List<ItemStack> items, boolean inventory) {
-        boolean changed = false;
+        int seen = 0, added = 0;
         for (ItemStack is : items) {
-            String n = Tracker.strip(is.getHoverName().getString()).replaceAll("^\\d+x ", "").trim();
-            if (!ALL.containsKey(n) || have().contains(n)) continue;
-            boolean owned = inventory;
-            if (!inventory) {
-                for (String l : ItemIds.lore(is)) {
-                    java.util.regex.Matcher m = STORED.matcher(l);
-                    if (m.find()) { owned = Long.parseLong(m.group(1).replace(",", "")) > 0; break; }
-                }
-            }
-            if (owned) { have().add(n); changed = true; }
+            String n = Tracker.strip(is.getHoverName().getString()).replaceAll("^\\d+x ", "").replaceAll(" x\\d+$", "").trim();
+            if (!ALL.containsKey(n)) continue;
+            seen++;
+            if (have().contains(n)) continue;
+            if (inventory || ownedFromLore(ItemIds.lore(is))) { have().add(n); added++; }
         }
-        if (changed) save();
+        if (added > 0) save();
+        if (!inventory && seen >= 3 && Config.get().greenhouseGuide) {
+            Tracker.say("§a[Greenhouse] §7Read " + seen + " mutations here" + (added > 0 ? ", §f" + added + " newly unlocked" : "")
+                    + "§7. You have §f" + have().size() + "§7/" + ALL.size() + ". §8(Wrong? /greenhouse → I have it / Unmark)");
+        }
+    }
+
+    /** Lore decides: "Stored: 5" = have it, "Stored: 0" / locked / ??? = don't, "Unlocked" / "Analyzed" = have it. */
+    private static boolean ownedFromLore(List<String> lore) {
+        for (String l : lore) {
+            java.util.regex.Matcher m = STORED.matcher(l);
+            if (m.find()) return Long.parseLong(m.group(1).replace(",", "")) > 0;
+        }
+        for (String l : lore) {
+            String low = l.toLowerCase(Locale.ROOT);
+            if (low.contains("locked") && !low.contains("unlocked")) return false;
+            if (low.contains("???") || low.contains("not discovered") || low.contains("undiscovered") || low.contains("not analyzed")) return false;
+        }
+        for (String l : lore) {
+            String low = l.toLowerCase(Locale.ROOT);
+            if (low.contains("unlocked") || low.contains("analyzed") || low.contains("discovered")) return true;
+        }
+        return false;
+    }
+
+    /** "[Sacks] +5 Choconut": you clearly have it. */
+    static void noticeName(String name) {
+        if (ALL.containsKey(name) && have().add(name)) save();
     }
 
     private static int invTick;
@@ -201,8 +249,10 @@ public final class Greenhouse {
     }
 
     private static String shortName(String s) {
+        if (s.length() <= 8) return s;
         String[] w = s.replace("-", " ").split(" ");
-        return w.length == 1 ? s.substring(0, Math.min(5, s.length())) : (w[0].substring(0, Math.min(3, w[0].length())) + w[1].substring(0, Math.min(2, w[1].length())));
+        if (w.length == 1) return s.substring(0, 7) + ".";
+        return (w[0].substring(0, Math.min(4, w[0].length())) + " " + w[1]).substring(0, Math.min(8, w[0].length() + 1 + w[1].length()));
     }
 
     // ---------------- in-world guide ----------------
@@ -217,16 +267,22 @@ public final class Greenhouse {
         if (m == null) return;
         if (!(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
         BlockPos c = hit.getBlockPos();
-        double y = c.getY() + 1.2;
+        double y = c.getY() + 1.05;
+        var white = Particles.dust(0xFFFFFF, 1.6f);
         for (int dx = 0; dx < m.size(); dx++) for (int dz = 0; dz < m.size(); dz++) {
-            Particles.pillar(Particles.WHITE, c.getX() + dx + 0.5, y, c.getZ() + dz + 0.5);     // leave empty (the mutation grows here)
+            for (int k = 0; k < 6; k++) Particles.point(white, c.getX() + dx + 0.5, y + k * 0.35, c.getZ() + dz + 0.5);   // leave empty
         }
         var colors = new LinkedHashMap<String, net.minecraft.core.particles.ParticleOptions>();
         int ci = 0;
-        for (String need : m.needs().keySet()) colors.put(need, Particles.PAIRS[ci++ % Particles.PAIRS.length]);
+        for (String need : m.needs().keySet()) colors.put(need, Particles.dust(FILL[ci++ % FILL.length] & 0xFFFFFF, 1.5f));
         for (Object[] cell : layout(m)) {
-            Particles.point(colors.get((String) cell[2]), c.getX() + (int) cell[0] + 0.5, y, c.getZ() + (int) cell[1] + 0.5);
-            Particles.point(colors.get((String) cell[2]), c.getX() + (int) cell[0] + 0.5, y + 0.4, c.getZ() + (int) cell[1] + 0.5);
+            double bx = c.getX() + (int) cell[0], bz = c.getZ() + (int) cell[1];
+            var col = colors.get((String) cell[2]);
+            // a colored square on the block (same color as on the HUD)
+            Particles.dense(col, bx + 0.15, y, bz + 0.15, bx + 0.85, y, bz + 0.15, 0.23);
+            Particles.dense(col, bx + 0.15, y, bz + 0.85, bx + 0.85, y, bz + 0.85, 0.23);
+            Particles.dense(col, bx + 0.15, y, bz + 0.15, bx + 0.15, y, bz + 0.85, 0.23);
+            Particles.dense(col, bx + 0.85, y, bz + 0.15, bx + 0.85, y, bz + 0.85, 0.23);
         }
     }
 
@@ -235,7 +291,7 @@ public final class Greenhouse {
     private static final String[] TEXT = {"§a", "§6", "§9", "§d", "§3", "§e"};
 
     /** One cell of the planting grid as drawn on screen. */
-    public record Cell(int col, int row, String label, int fill) {}
+    public record Cell(int col, int row, String label, String sub, int fill) {}
     public record Grid(int size, List<Cell> cells) {}
 
     public static boolean active() {
@@ -252,10 +308,11 @@ public final class Greenhouse {
         if (m.needs().isEmpty()) { out.add("§7Keep every block around it empty."); return; }
         int i = 0;
         for (var e : m.needs().entrySet()) {
-            out.add(TEXT[i % TEXT.length] + "■ §f" + e.getValue() + "x " + e.getKey() + (has(e.getKey()) ? "" : " §c(not unlocked)"));
+            out.add(TEXT[i % TEXT.length] + "■ §f" + e.getValue() + "x " + e.getKey() + " §7on §f" + shortSurface(surfaceOf(e.getKey()))
+                    + (has(e.getKey()) ? "" : " §c(not unlocked)"));
             i++;
         }
-        out.add("§f✦ §7= leave empty  §8(top = the way you face)");
+        out.add("§f✦ §7= the empty " + shortSurface(m.surface()) + " where it grows  §8(top = the way you face)");
     }
 
     /** The planting grid, turned so the top is the direction you're facing. */
@@ -279,12 +336,12 @@ public final class Greenhouse {
         };
         for (int dx = 0; dx < s; dx++) for (int dz = 0; dz < s; dz++) {
             int[] p = place.apply((double) dx, (double) dz);
-            cells.add(new Cell(p[0], p[1], "✦", 0xD0E0E0E0));
+            cells.add(new Cell(p[0], p[1], "✦ " + shortName(m.name()), "empty", 0xE0E8E8E8));
         }
         for (Object[] cell : layout(m)) {
             int[] p = place.apply((double) (int) cell[0], (double) (int) cell[1]);
             String need = (String) cell[2];
-            cells.add(new Cell(p[0], p[1], shortName(need), FILL[colorOf.get(need) % FILL.length]));
+            cells.add(new Cell(p[0], p[1], shortName(need), shortSurface(surfaceOf(need)), FILL[colorOf.get(need) % FILL.length]));
         }
         return new Grid(n, cells);
     }
@@ -309,7 +366,8 @@ public final class Greenhouse {
             List<String> missing = missingChain(m.name());
             String state = has(m.name()) ? "§a✔ have" : missing.isEmpty() ? "§e can make" : "§c needs " + missing.size() + " first";
             StringBuilder needs = new StringBuilder();
-            for (var e : m.needs().entrySet()) needs.append(has(e.getKey()) ? "§7" : "§c").append(e.getValue()).append(" ").append(e.getKey()).append("§8, ");
+            for (var e : m.needs().entrySet()) needs.append(has(e.getKey()) ? "§7" : "§c").append(e.getValue()).append(" ").append(e.getKey())
+                    .append(" §8(on ").append(shortSurface(surfaceOf(e.getKey()))).append(")§8, ");
             String req = m.special() != null ? "§7" + m.special() : m.needs().isEmpty() ? "§7nothing around it" : needs.substring(0, needs.length() - 4);
             List<Action> buttons = new ArrayList<>();
             buttons.add(new Action(m.name().equals(target) ? "§a§lPlanned" : "Plan", "Show the layout for " + m.name() + " (in the Plan tab, the HUD and the world).", () -> {
@@ -323,7 +381,7 @@ public final class Greenhouse {
                 save();
                 ref[0].refresh();
             }));
-            rows.add(new Row(new String[]{"§f" + m.name(), state, req}, "§7Grows on: §f" + m.surface() + (m.size() > 1 ? "\n§7Size: " + m.size() + "x" + m.size() : ""), buttons));
+            rows.add(new Row(new String[]{"§f" + m.name() + " §8(on " + shortSurface(m.surface()) + ")", state, req}, "§7Grows on: §f" + m.surface() + (m.size() > 1 ? "\n§7Size: " + m.size() + "x" + m.size() : ""), buttons));
         }
         return new Page(new String[]{"Mutation", "Status", "Needs around it"}, new int[]{110, 90, 230}, rows, List.of(),
                 List.of("§8Red = you don't have that one yet. Requirements: Hypixel SkyBlock Wiki."));
@@ -339,6 +397,7 @@ public final class Greenhouse {
         }
         Mutation m = ALL.get(target);
         top.add(new Action("Stop guide", "Turns off the layout markers and HUD panel.", () -> { target = null; save(); ref[0].refresh(); }));
+        top.add(new Action("Reset unlocks", "Forget which mutations you have; open your Mutations Sack again to re-read them.", () -> { resetMarks(); ref[0].refresh(); }));
         List<String> chain = missingChain(m.name());
         if (has(m.name())) rows.add(new Row("§a✔ You already have " + m.name() + "."));
         if (!chain.isEmpty()) {
@@ -361,7 +420,7 @@ public final class Greenhouse {
     private static String needsText(Mutation m) {
         if (m.needs().isEmpty()) return "nothing (keep it alone)";
         List<String> parts = new ArrayList<>();
-        m.needs().forEach((k, v) -> parts.add(v + " " + k));
+        m.needs().forEach((k, v) -> parts.add(v + " " + k + " (on " + shortSurface(surfaceOf(k)) + ")"));
         return String.join(", ", parts);
     }
 

@@ -51,6 +51,18 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 6.5
+- Menus are drawn in layers in 26.x; the mod now draws on a **new layer** on top of each menu. Result: rarity colors in
+  **every** menu with the **item drawn over the color**, and the inventory search highlights are actually visible.
+- Inventory search box: while you type, keys like E / Q / 1-9 don't act on the inventory; **Escape or clicking elsewhere**
+  leaves the box and everything works normally again.
+- Menu footers wrap instead of being cut off.
+- Pests: a dense box of colored dust particles (color in Farming settings).
+- /shards: the list now comes from Hypixel's own item list, so every attribute shard shows up (with its rarity).
+- Greenhouse: better unlock detection (sack "Stored", sack messages, Unlocked/Analyzed lore) with a chat line telling you
+  what was read, a "Reset unlocks" button, "on <block>" next to every crop and mutation, bigger grid squares with the
+  name and the block, and in-world colored squares matching the HUD colors.
+
 ## New in 6.4.1 (fixes & polish)
 - Menus no longer recalculate everything on every mouse-wheel notch or search letter (talismans and craft flips were slow to scroll/search).
 - After resizing the window, tooltip scrolling and backspace in the inventory search no longer act several times at once.

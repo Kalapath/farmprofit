@@ -67,6 +67,8 @@ public final class Config {
     public boolean pestTrail = true;
     @Setting(category = "Farming", label = "Pest glow outline", desc = "Gives pests Minecraft's glowing outline, visible through walls.")
     public boolean pestGlow = true;
+    @Setting(category = "Farming", label = "Pest box color", desc = "Color of the box around pests, as a hex number, e.g. FF3030 (red), FFFF00 (yellow), 00FFFF (cyan).", options = {"FF3030", "FFFF00", "00FFFF", "FF00FF", "00FF00", "FFFFFF"})
+    public String pestBoxColorHex = "FF3030";
     @Setting(category = "Farming", label = "Greenhouse guide", desc = "When a mutation is planned (/greenhouse): markers on the plot you look at and a layout grid on the HUD.")
     public boolean greenhouseGuide = true;
     @Setting(category = "Farming", label = "Show visitors", desc = "Garden visitors accepted.")
@@ -182,7 +184,7 @@ public final class Config {
     @Setting(category = "Items & areas", label = "Rarity colors on hotbar", desc = "The same rarity colors on your hotbar.")
     public boolean rarityHotbar = true;
     @Setting(category = "Items & areas", label = "Rarity color strength", desc = "0 = invisible, 255 = solid.", min = 0, max = 255)
-    public int rarityOpacity = 150;
+    public int rarityOpacity = 170;
     @Setting(category = "Items & areas", label = "Search descriptions too", desc = "The search box also matches text in item descriptions (e.g. \"Farming Fortune\").")
     public boolean inventorySearchLore = true;
     @Setting(category = "Items & areas", label = "Tooltip scroll speed", desc = "Lines moved per mouse-wheel notch.", min = 1, max = 20)
@@ -376,6 +378,11 @@ public final class Config {
             case Tracker.DIANA -> showDianaHud;
             default -> showFarmingHud;
         };
+    }
+
+    /** The pest box color as a number. */
+    public int pestBoxColor() {
+        try { return Integer.parseInt(pestBoxColorHex.replace("#", ""), 16); } catch (Exception e) { return 0xFF3030; }
     }
 
     public static Config get() {

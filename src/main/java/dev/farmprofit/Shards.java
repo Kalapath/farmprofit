@@ -64,7 +64,17 @@ public final class Shards {
             if (attribute == null && !l.contains("Shard")) { attribute = l; continue; }
             if (attribute != null && effect.length() < 220 && !l.startsWith("Click") && !l.startsWith("Right-click")) effect.append(l).append(' ');
         }
+        Info api = ALL.get(id);
+        if (rarity == null && api != null) rarity = api.rarity();
         if (rarity != null) ALL.put(id, new Info(id, name, rarity, attribute, effect.toString().trim()));
+    }
+
+    /** From Hypixel's item list (always has every attribute shard and its rarity). Keeps richer item-data info if present. */
+    static void fromApi(String id, String name, String tier) {
+        String rarity = tier.toUpperCase(Locale.ROOT);
+        if (!PER_LEVEL.containsKey(rarity)) return;
+        Info old = ALL.get(id);
+        ALL.put(id, new Info(id, name, rarity, old != null ? old.attribute() : null, old != null ? old.effect() : ""));
     }
 
     // ---------------- your levels ----------------
@@ -135,10 +145,13 @@ public final class Shards {
             int need = 0;
             for (int l = cur; l < to; l++) need += table[l];
             double each = buyPrice(s.id());
-            if (each <= 0) continue;
-            out.add(new Pick(s, cur, to, need, need * each));
+            out.add(new Pick(s, cur, to, need, each <= 0 ? -1 : need * each));
         }
-        out.sort((a, b) -> Double.compare(a.cost() / (a.to() - a.from()), b.cost() / (b.to() - b.from())));
+        // priced ones first (cheapest per level), then shards nobody sells on the Bazaar
+        out.sort((a, b) -> {
+            if ((a.cost() < 0) != (b.cost() < 0)) return a.cost() < 0 ? 1 : -1;
+            return Double.compare(a.cost() / (a.to() - a.from()), b.cost() / (b.to() - b.from()));
+        });
         return out;
     }
 
@@ -156,12 +169,12 @@ public final class Shards {
     private static Page page(boolean toMax) {
         List<Row> rows = new ArrayList<>();
         List<String> footer = new ArrayList<>();
-        if (ALL.isEmpty()) footer.add("§7Item data is still downloading (first time takes a minute).");
+        if (ALL.isEmpty()) footer.add("§7Shard list is still loading (a few seconds after joining). Reopen the menu.");
         int i = 1;
         double total = 0;
         for (Pick p : plan(toMax)) {
-            if (i > 60) break;
-            total += p.cost();
+            if (i > 300) break;
+            if (p.cost() > 0) total += p.cost();
             String hunting = switch (p.shard().rarity()) { case "UNCOMMON" -> "5"; case "RARE" -> "10"; case "EPIC" -> "15"; case "LEGENDARY" -> "20"; default -> "0"; };
             String tip = color(p.shard().rarity()) + p.shard().name() + " §7(" + p.shard().rarity().toLowerCase() + ")"
                     + (p.shard().attribute() != null ? "\n§f" + p.shard().attribute() : "")
@@ -170,7 +183,8 @@ public final class Shards {
                     + "\n§8Needs Hunting " + hunting + " to syphon";
             rows.add(new Row(new String[]{"§8" + i++ + ". " + color(p.shard().rarity()) + p.shard().name(),
                     "§f" + (p.shard().attribute() != null ? p.shard().attribute() : ""), "§7Lv " + p.from() + "→" + p.to(),
-                    "§f" + p.shardsNeeded(), "§6" + Fmt.coins(p.cost()), "§8" + Fmt.coins(p.cost() / (p.to() - p.from())) + "/lvl"}, tip,
+                    "§f" + p.shardsNeeded(), p.cost() < 0 ? "§8not on Bazaar" : "§6" + Fmt.coins(p.cost()),
+                    p.cost() < 0 ? "" : "§8" + Fmt.coins(p.cost() / (p.to() - p.from())) + "/lvl"}, tip,
                     List.of(new Action("§eBazaar", "Opens " + p.shard().name() + " in the Bazaar.", () -> MenuScreen.runCommand("bz " + p.shard().name())))));
         }
         footer.add("§7Cheapest first (coins per attribute level, Bazaar buy price).");

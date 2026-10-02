@@ -125,7 +125,7 @@ public final class FarmProfitClient implements ClientModInitializer {
         HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR, Identifier.fromNamespaceAndPath("skyassist", "rarity"), (graphics, delta) -> {
             Minecraft mc = Minecraft.getInstance();
             if (Compat.hudHidden(mc)) return;
-            for (int[] b : RarityBg.hotbarBoxes(mc)) if (b != null) graphics.fill(b[0], b[1], b[2], b[3], b[4]);
+            RarityBg.drawHotbar(mc, graphics);
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
                 Identifier.fromNamespaceAndPath("skyassist", "hud"), (graphics, delta) -> {
@@ -187,8 +187,10 @@ public final class FarmProfitClient implements ClientModInitializer {
                                 for (Greenhouse.Cell cell : g.cells()) {
                                     int cx = gx + cell.col() * cw, cy = gy + cell.row() * ch;
                                     graphics.fill(cx, cy, cx + cw - 2, cy + ch - 2, cell.fill());
-                                    int tw = mc.font.width(cell.label());
-                                    graphics.text(mc.font, cell.label(), cx + (cw - 2 - tw) / 2, cy + (ch - 2 - 8) / 2, cell.label().equals("✦") ? 0xFF202020 : 0xFFFFFFFF, true);
+                                    boolean empty = cell.label().startsWith("✦");
+                                    int tw = mc.font.width(cell.label()), sw = mc.font.width(cell.sub());
+                                    graphics.text(mc.font, cell.label(), cx + (cw - 2 - tw) / 2, cy + 3, empty ? 0xFF202020 : 0xFFFFFFFF, !empty);
+                                    graphics.text(mc.font, cell.sub(), cx + (cw - 2 - sw) / 2, cy + 12, empty ? 0xFF505050 : 0xFFE0E0E0, false);
                                 }
                             }
                         }

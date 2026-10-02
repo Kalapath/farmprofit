@@ -47,7 +47,7 @@ public final class Debug {
                 + Tracker.dungeonFloor + ")");
         Tracker.say(" " + ok(Prices.loaded()) + " §7Prices: §f" + Prices.bazaarCount() + "§7 bazaar, §f" + Prices.itemCount()
                 + "§7 items, §f" + Prices.binCount() + "§7 auction §8(" + ItemIds.LEARNED.size() + " item IDs learned)");
-        Tracker.say(" " + ok(CraftCost.count() > 0) + " §7Recipes §8(" + CraftCost.count() + ")  " + maybe(ScreenOverlay.works) + " §7Menu overlay  " + maybe(ScreenOverlay.behindWorks) + " §7Rarity behind items");
+        Tracker.say(" " + ok(CraftCost.count() > 0) + " §7Recipes §8(" + CraftCost.count() + ")  " + maybe(ScreenOverlay.works) + " §7Menu overlay  " + maybe(InvSearch.keysWork) + " §7Search box keys");
         Tracker.say(" " + ok(Shards.count() > 0) + " §7Shards known §8(" + Shards.count() + ")  " + maybe(InvSearch.works) + " §7Inventory search");
         Tracker.say(" " + ok(Accessories.count() > 0) + " §7Accessories known §8(" + Accessories.count() + ")");
         Tracker.say(" " + ok(WorldPuzzles.quizCount() > 0) + " §7Quiz answers §8(" + WorldPuzzles.quizCount() + ")");

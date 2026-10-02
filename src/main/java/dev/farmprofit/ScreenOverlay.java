@@ -15,7 +15,7 @@ final class ScreenOverlay {
     static Boolean behindWorks;
 
     static void register(Object screen) {
-        behindWorks = hook(screen, new String[]{"afterBackground", "afterRenderBackground"}, (s, g) -> RarityBg.drawMenu(s, g));
+        behindWorks = null;
         try {
             Class<?> events = Class.forName("net.fabricmc.fabric.api.client.screen.v1.ScreenEvents");
             for (Method m : events.getMethods()) {
@@ -33,7 +33,10 @@ final class ScreenOverlay {
                         };
                     }
                     if (args != null && args.length >= 2) {
-                        if (behindWorks != Boolean.TRUE) try { RarityBg.drawMenu(args[0], args[1]); } catch (Throwable ignored) {}
+                        int mx = args.length > 2 && args[2] instanceof Integer i ? i : -999, my = args.length > 3 && args[3] instanceof Integer i ? i : -999;
+                        // new drawing layer, so everything below lands on top of the menu's own items
+                        Reflect.call(args[1], new String[]{"nextStratum", "createNewRootLayer"});
+                        try { RarityBg.drawMenu(args[0], args[1], mx, my); } catch (Throwable ignored) {}
                         try { Terminals.draw(args[0], args[1]); } catch (Throwable ignored) {}
                         try { InvSearch.draw(args[0], args[1]); } catch (Throwable ignored) {}
                     }

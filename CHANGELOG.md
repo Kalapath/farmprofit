@@ -1,5 +1,8 @@
 # Changelog
 
+## 6.5.0
+- Layered menu drawing (rarity under items everywhere, visible search highlights), search box key handling, wrapped footers, pest dust box, shards from Hypixel item list, greenhouse unlock detection + planting surfaces + clearer visuals.
+
 ## 6.4.1
 - Menu caching (smooth scroll/search), duplicate screen hooks after resize, rarity behind items, chat-open counting, small performance fixes.
 

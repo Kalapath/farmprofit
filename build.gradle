@@ -2,7 +2,7 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-version = project.mod_version
+version = "${project.mod_version}+mc${project.minecraft_version}"
 group = project.maven_group
 base { archivesName = project.archives_base_name }
 
@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     compileOnly "net.hypixel:mod-api:1.0.1"
-    compileOnly("com.terraformersmc:modmenu:18.0.0") { transitive = false }
+    compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
@@ -21,8 +21,9 @@ dependencies {
 
 processResources {
     inputs.property "version", project.version
+    inputs.property "minecraft_dep", project.minecraft_dep
     inputs.property "commit", (System.getenv("GITHUB_SHA") ?: "dev")
-    filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }
+    filesMatching("fabric.mod.json") { expand "version": inputs.properties.version, "minecraft_dep": inputs.properties.minecraft_dep }
     filesMatching("farmprofit-build.txt") { expand "commit": inputs.properties.commit }
 }
 

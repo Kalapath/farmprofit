@@ -69,7 +69,7 @@ public final class SetupScreen extends Screen {
             addRenderableWidget(Button.builder(Component.literal("Turn off duplicates"), b -> { Dedupe.turnOff(); rebuildWidgets(); })
                     .bounds(left + 115, by, 110, 20).build());
         }
-        addRenderableWidget(Button.builder(Component.literal("Settings"), b -> Minecraft.getInstance().setScreen(new SettingsScreen(this)))
+        addRenderableWidget(Button.builder(Component.literal("Settings"), b -> Compat.setScreen(Minecraft.getInstance(), new SettingsScreen(this)))
                 .bounds(left + 230, by, 110, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Check again"), b -> rebuildWidgets()).bounds(left, by + 24, 110, 20).build());
         addRenderableWidget(Button.builder(Component.literal("§aDone"), b -> onClose()).bounds(left + 230, by + 24, 110, 20).build());
@@ -79,16 +79,16 @@ public final class SetupScreen extends Screen {
     public void onClose() {
         Config.get().setupDone = true;
         Config.save();
-        Minecraft.getInstance().setScreen(null);
+        Compat.setScreen(Minecraft.getInstance(), null);
     }
 
     public static void requestOpen() { openNextTick = true; }
 
     /** Opens once, about 8 seconds after you first join SkyBlock, until you've pressed Done. */
     static void tick(Minecraft mc) {
-        if (openNextTick && mc.screen == null) {
+        if (openNextTick && Compat.screen(mc) == null) {
             openNextTick = false;
-            mc.setScreen(new SetupScreen());
+            Compat.setScreen(mc, new SetupScreen());
             return;
         }
         boolean onSkyBlock = mc.player != null && (Tracker.areaName != null || Tracker.purse >= 0
@@ -98,8 +98,8 @@ public final class SetupScreen extends Screen {
         if (System.currentTimeMillis() - onSkyBlockSince < 8000) return;
         Dedupe.warnOnce();
         UpdateCheck.start();
-        if (Config.get().setupDone || shownThisLaunch || mc.screen != null) return;
+        if (Config.get().setupDone || shownThisLaunch || Compat.screen(mc) != null) return;
         shownThisLaunch = true;
-        mc.setScreen(new SetupScreen());
+        Compat.setScreen(mc, new SetupScreen());
     }
 }

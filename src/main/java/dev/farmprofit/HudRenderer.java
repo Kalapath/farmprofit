@@ -17,7 +17,7 @@ final class HudRenderer {
 
     static List<HudEditor.Box> layout(Minecraft mc) {
         Config cfg = Config.get();
-        boolean chat = mc.screen instanceof ChatScreen;
+        boolean chat = Compat.screen(mc) instanceof ChatScreen;
         if (!chat) editMode = false;
         long now = System.currentTimeMillis();
         if (chat || now - cacheTime > 250) {                 // rebuild text 4x a second (instant while editing)

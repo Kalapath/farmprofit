@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.2.0
+- /talismans: cheapest Magical Power you don't have yet (AH or craft, upgrade-aware).
+
+## 5.1.0
+- Ice Fill, Creeper Beams, Teleport Maze, Tic Tac Toe, Quiz and Melody solvers (particle markers + HUD).
+
+## 5.0.0
+- Builds for 26.1 and 26.2, craft cost tooltips, sign calculator and /calc, HUD layout presets, Three Weirdos / Blaze / terminal solvers.
+
+## 4.3.0
+- Mouse-wheel scrolling for tooltips that don't fit on screen.
+
+## 4.2.0
+- Enchantment colors by level (perfect / great / good / low) with ✦ on maxed enchants.
+
+## 4.1.0
+- Foraging detection fixes, Combat kills, grind HUDs (Zealots etc.), smarter item grouping.
+
 ## 4.0.0
 - First-time setup check (`/profit setup`): shows what the mod can see and how to fix what's missing.
 - Settings: search box, reset button per setting and per tab, Hidden items list, Mod Menu "Configure" button.

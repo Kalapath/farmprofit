@@ -47,6 +47,10 @@ public final class Debug {
                 + Tracker.dungeonFloor + ")");
         Tracker.say(" " + ok(Prices.loaded()) + " §7Prices: §f" + Prices.bazaarCount() + "§7 bazaar, §f" + Prices.itemCount()
                 + "§7 items, §f" + Prices.binCount() + "§7 auction §8(" + ItemIds.LEARNED.size() + " item IDs learned)");
+        Tracker.say(" " + ok(CraftCost.count() > 0) + " §7Recipes §8(" + CraftCost.count() + ")  " + maybe(ScreenOverlay.works) + " §7Menu overlay (terminals)");
+        Tracker.say(" " + ok(Accessories.count() > 0) + " §7Accessories known §8(" + Accessories.count() + ")");
+        Tracker.say(" " + ok(WorldPuzzles.quizCount() > 0) + " §7Quiz answers §8(" + WorldPuzzles.quizCount() + ")");
+        Tracker.say(" " + ok(Enchants.count() > 0) + " §7Enchant max levels §8(" + Enchants.count() + ")");
         Tracker.say(" " + ok(Contests.loaded()) + " §7Jacob's contests  " + ok(Election.mayor != null) + " §7Mayor: §f" + Election.mayor);
         Tracker.say(" " + maybe(iconsWork) + " §7Icons  " + maybe(scaleWorks) + " §7Scale  " + maybe(mouseWorks) + " §7Mouse (open chat)");
         StringBuilder seen = new StringBuilder(" §7Messages recognised: ");

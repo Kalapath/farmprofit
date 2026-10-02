@@ -48,7 +48,7 @@ public final class Menus {
 
     /** Should inventory changes count while this menu is open? Re-checked when the menu changes. */
     public static boolean countsIn(Minecraft mc) {
-        Object screen = mc.screen;
+        Object screen = Compat.screen(mc);
         if (screen == null) { lastScreen = null; return true; }
         if (screen == lastScreen && analysed) return countHere;
         if (screen != lastScreen) { chestCostCharged = false; waited = 0; }
@@ -65,6 +65,7 @@ public final class Menus {
         for (String c : CHESTS) if (title.contains(c)) kind = "chest";
         // menus fill in a tick or two after opening: look again until there's something to read
         analysed = !items.isEmpty() || ++waited > 20;
+        if (!items.isEmpty()) Accessories.scanMenu(title, items);
         if (analysed) {
             if ("chest".equals(kind)) analyseChestScreen(title, items);
             else analyseCroesus(items);

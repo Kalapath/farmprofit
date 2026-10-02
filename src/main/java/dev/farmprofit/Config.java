@@ -89,6 +89,14 @@ public final class Config {
     public boolean combatNeedsSlayer = false;
     @Setting(category = "Combat & Slayers", label = "Show slayer bosses", desc = "Bosses killed and per hour.")
     public boolean combatShowBosses = true;
+    @Setting(category = "Combat & Slayers", label = "Show kills", desc = "Kills, kills per hour and the mobs you killed most.")
+    public boolean combatShowKills = true;
+    @Setting(category = "Combat & Slayers", label = "Grind HUDs", desc = "When most of your kills are one farmable mob (Zealots, Ghosts, Endermen...), the Combat HUD turns into a grind HUD with drop odds and 'since last drop'.")
+    public boolean grindHuds = true;
+    @Setting(category = "Combat & Slayers", label = "Grind kills share %", desc = "How much of your kills must be one grind mob before the grind HUD appears.", min = 30, max = 100)
+    public int grindShare = 60;
+    @Setting(category = "Combat & Slayers", label = "Show profit per kill", desc = "Average coins per kill.")
+    public boolean combatShowPerKill = true;
     @Setting(category = "Combat & Slayers", label = "Show Magic Find", desc = "Magic Find from the Stats tab widget.")
     public boolean combatShowMagicFind = false;
     @Setting(category = "Dungeons", label = "Show runs", desc = "Runs, average time and runs per hour.")
@@ -131,6 +139,58 @@ public final class Config {
     public boolean updateCheck = true;
     @Setting(category = "General", label = "GitHub repo", desc = "owner/name of the repo that builds this mod, e.g. Kalapath/farmprofit.")
     public String updateRepo = "Kalapath/farmprofit";
+    @Setting(category = "Items & areas", label = "Color enchantments", desc = "Colors enchantments in tooltips by level: perfect (max), great (above table max), good (table max), lower.")
+    public boolean enchantColors = true;
+    @Setting(category = "Items & areas", label = "Perfect enchant color", desc = "Enchantments at their absolute maximum level.", options = {"gold", "rainbow", "red", "light purple", "dark purple", "aqua", "green", "yellow", "blue", "gray", "dark gray", "white"})
+    public String enchantPerfectColor = "gold";
+    @Setting(category = "Items & areas", label = "Great enchant color", desc = "Above what the enchanting table gives, but not max yet.", options = {"gold", "rainbow", "red", "light purple", "dark purple", "aqua", "green", "yellow", "blue", "gray", "dark gray", "white"})
+    public String enchantGreatColor = "light purple";
+    @Setting(category = "Items & areas", label = "Good enchant color", desc = "Exactly the enchanting table maximum.", options = {"gold", "rainbow", "red", "light purple", "dark purple", "aqua", "green", "yellow", "blue", "gray", "dark gray", "white"})
+    public String enchantGoodColor = "blue";
+    @Setting(category = "Items & areas", label = "Low enchant color", desc = "Below the enchanting table maximum.", options = {"gold", "rainbow", "red", "light purple", "dark purple", "aqua", "green", "yellow", "blue", "gray", "dark gray", "white"})
+    public String enchantPoorColor = "gray";
+    @Setting(category = "Items & areas", label = "Mark maxed with ✦", desc = "Adds a ✦ after enchantments at their maximum level.")
+    public boolean enchantMaxTag = true;
+    @Setting(category = "Items & areas", label = "Enchant data URL", desc = "Where max levels come from (public SkyKings data). Empty = off.")
+    public String enchantDataUrl = "https://raw.githubusercontent.com/SkyKings-Guild/Bot-Data/main/skyblock/enchants.json";
+    @Setting(category = "Items & areas", label = "Scroll long tooltips", desc = "Item descriptions taller than your screen can be scrolled with the mouse wheel.")
+    public boolean tooltipScroll = true;
+    @Setting(category = "Items & areas", label = "Tooltip scroll speed", desc = "Lines moved per mouse-wheel notch.", min = 1, max = 20)
+    public int tooltipScrollSpeed = 3;
+    @Setting(category = "Items & areas", label = "Craft cost in tooltips", desc = "Shows what an item costs to craft from bought ingredients, and whether crafting or buying is cheaper.")
+    public boolean craftCost = true;
+    @Setting(category = "Items & areas", label = "Recipe data URL", desc = "Where recipes come from (the public NEU item repository, downloaded weekly). Empty = off.")
+    public String neuRepoUrl = "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO/archive/refs/heads/master.zip";
+    @Setting(category = "Items & areas", label = "Calculator in signs", desc = "In Bazaar / Auction amount signs, type a sum ending in = (e.g. 64x8= or 10m/3=) and it becomes the result.")
+    public boolean signCalculator = true;
+    @Setting(category = "Dungeons", label = "Three Weirdos solver", desc = "Tells you which chest to open.")
+    public boolean solveWeirdos = true;
+    @Setting(category = "Dungeons", label = "Blaze puzzle helper", desc = "Shows the lowest and highest health blaze with arrows.")
+    public boolean solveBlaze = true;
+    @Setting(category = "Dungeons", label = "Terminal solvers", desc = "Floor 7 / Master 7 terminals: highlights what to click (you still click).")
+    public boolean solveTerminals = true;
+    @Setting(category = "Dungeons", label = "Puzzle markers", desc = "Show puzzle answers in the world with particles only you can see.")
+    public boolean puzzleParticles = true;
+    @Setting(category = "Dungeons", label = "Ice Fill solver", desc = "Green path over every ice tile, from where you stand.")
+    public boolean solveIceFill = true;
+    @Setting(category = "Dungeons", label = "Creeper Beams solver", desc = "Marks which sea lanterns to connect.")
+    public boolean solveCreeper = true;
+    @Setting(category = "Dungeons", label = "Teleport Maze helper", desc = "After each teleport, marks the pad most in the direction you're facing (toward the exit).")
+    public boolean solveTeleport = true;
+    @Setting(category = "Dungeons", label = "Tic Tac Toe solver", desc = "Marks the best button to press.")
+    public boolean solveTicTacToe = true;
+    @Setting(category = "Dungeons", label = "Quiz solver", desc = "Tells you the right answer for Ouro the Omniscient.")
+    public boolean solveQuiz = true;
+    @Setting(category = "Dungeons", label = "Quiz answers URL", desc = "Maintained list of quiz answers (Skytils data). Empty = off.")
+    public String quizDataUrl = "https://raw.githubusercontent.com/Skytils/SkytilsMod-Data/main/solvers/oruotrivia.json";
+    @Setting(category = "Dungeons", label = "Melody terminal helper", desc = "Floor 7: turns the button green when it's time to click.")
+    public boolean solveMelody = true;
+    @Setting(category = "Items & areas", label = "Talismans listed", desc = "How many accessories /talismans shows.", min = 1, max = 50)
+    public int talismanCount = 10;
+    @Setting(category = "Items & areas", label = "Talismans: include crafting", desc = "Also consider crafting an accessory (and upgrading ones you own) when it's cheaper than the Auction House.")
+    public boolean talismanUseCraft = true;
+    @Setting(category = "Items & areas", label = "Talismans: max price", desc = "Skip accessories costing more than this. 0 = no limit.", min = 0, max = 1e13)
+    public double talismanMaxPrice = 0;
     @Setting(category = "General", label = "Reset after (minutes)", desc = "Minutes without activity before a session ends and is saved to history.", min = 1, max = 600)
     public int resetMinutes = 15;
     /**
@@ -143,8 +203,6 @@ public final class Config {
     @Setting(category = "General", label = "Pause timer after (seconds)", desc = "The session clock pauses after this long without activity, so AFK time doesn't lower profit/h.", min = 5, max = 600)
     public int pauseSeconds = 30;
     /** On the HUD, items worth less than this (in total) are grouped into one "cheap items" line. */
-    @Setting(category = "HUD", label = "Group items cheaper than", desc = "Items worth less than this (in total) are grouped into one 'cheap items' line.", min = 0, max = 1000000000000.0)
-    public double minItemValue = 1000;
     /** Items you never want counted (e.g. "Hay Bale"). Add with /profit ignore <item> */
     @Setting(category = "Items & areas", label = "Ignored items", desc = "Comma separated. These never count toward profit. Right-click an item on the HUD (chat open) to add it.")
     public java.util.List<String> ignoredItems = new java.util.ArrayList<>();
@@ -188,7 +246,7 @@ public final class Config {
     public int hudX = 5;
     @Setting(category = "HUD", label = "HUD Y position", desc = "Or drag the HUD with chat open.", min = 0, max = 10000, hidden = true)
     public int hudY = 5;
-    @Setting(category = "HUD", label = "Items shown", desc = "How many item lines the HUD lists before 'and X more'.", min = 1, max = 50)
+    @Setting(category = "HUD", label = "Items shown", desc = "Up to this many items are listed one by one. If you have more, the cheapest are added up into one line.", min = 1, max = 50)
     public int hudMaxItems = 6;
     @Setting(category = "HUD", label = "HUD scale", desc = "0.5 to 3.", min = 0.5, max = 3, hidden = true)
     public double hudScale = 1.0;

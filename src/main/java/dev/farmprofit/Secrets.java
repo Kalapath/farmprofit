@@ -115,6 +115,8 @@ public final class Secrets {
     }
 
     public static void addHudLines(Hud.Lines out) {
+        Puzzles.addBlazeLines(out);
+        WorldPuzzles.addHudLines(out);
         if (!Tracker.DUNGEONS.equals(Tracker.area) || !Config.get().secretFinder) return;
         Minecraft mc = Minecraft.getInstance();
         boolean fresh = System.currentTimeMillis() - roomSeen < 5000 && roomTotal >= 0;

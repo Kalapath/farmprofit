@@ -67,6 +67,36 @@ public final class Panels {
         }
     }
 
+    /** Ready-made layouts. left / right / split / compact. Returns false for an unknown name. */
+    public static boolean preset(String name, int screenW, int screenH) {
+        if (map == null) load();
+        java.util.List<String> keys = new java.util.ArrayList<>(ALL);
+        for (String k : map.keySet()) if (k.startsWith("main:")) keys.add(k);
+        int right = Math.max(5, screenW - 190);
+        for (String k : keys) {
+            Pos p = get(k);
+            String id = k.startsWith("main") ? "main" : k;
+            p.hidden = false;
+            switch (name) {
+                case "left" -> { p.scale = 1.0; p.x = id.equals("main") ? 5 : -1; p.y = id.equals("main") ? 5 : -1; }
+                case "compact" -> { p.scale = 0.75; p.x = id.equals("main") ? 4 : -1; p.y = id.equals("main") ? 4 : -1; }
+                case "right" -> { p.scale = 1.0; p.x = id.equals("main") ? right : -1; p.y = id.equals("main") ? screenH / 3 : -1; }
+                case "split" -> {
+                    p.scale = 1.0;
+                    switch (id) {
+                        case "main" -> { p.x = 5; p.y = 5; }
+                        case "bazaar" -> { p.x = right; p.y = screenH / 3; }
+                        case "secrets" -> { p.x = right; p.y = 5; }
+                        default -> { p.x = -1; p.y = -1; }
+                    }
+                }
+                default -> { return false; }
+            }
+        }
+        save();
+        return true;
+    }
+
     public static void reset() {
         map = new LinkedHashMap<>();
         save();

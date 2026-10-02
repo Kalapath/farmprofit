@@ -63,10 +63,11 @@ public final class Hud {
         Config cfg = Config.get();
         long now = System.currentTimeMillis();
         String main = s.mainCrop();
-        if (cfg.hudShowTitle) out.add(title(type));
+        if (cfg.hudShowTitle) out.add(s.isCombat() && s.grind != null ? "§5§l✦ " + s.grind + " grind" : title(type));
         if (cfg.hudShowTime) out.add("§7Time: §f" + Fmt.duration(s.durationMs(now)));
+        if (s.isCombat()) addCombatLines(out, s, now);
         if (details) addActivityLine(out, s, now);
-        if (s.isCombat() && cfg.combatShowBosses) addBossLine(out, s, now);
+        if (s.isCombat() && cfg.combatShowBosses && (s.totalBreaks() > 0 || s.slayerQuests > 0)) addBossLine(out, s, now);
         if ((s.isDungeons() && cfg.dungShowRuns) || (s.isKuudra() && cfg.kuudraShowRuns)) addRunLine(out, s, now);
         if (s.isDiana() && cfg.dianaShowBurrows) out.add("§7Burrows: §e" + Fmt.num(s.burrows) + rate(s.burrows, s, now));
         if (details) {
@@ -141,7 +142,7 @@ public final class Hud {
         Lines out = new Lines();
         out.add(title(s.type));
         out.add("§7Time: §f" + Fmt.duration(s.durationMs(now)));
-        if (s.isCombat()) addBossLine(out, s, now);
+        if (s.isCombat()) { addCombatLines(out, s, now); if (s.totalBreaks() > 0) addBossLine(out, s, now); }
         if (s.isDungeons() || s.isKuudra()) addRunLine(out, s, now);
         if (s.isDiana()) out.add("§7Burrows: §e" + Fmt.num(s.burrows));
         out.add("§7Profit: §6" + Fmt.coins(s.value()) + " coins");
@@ -210,6 +211,38 @@ public final class Hud {
         } else if (s.isFarming() && c.farmShowBps) {
             out.add("§7Farming: §a" + s.mainCrop() + " §8(" + Fmt.num(s.totalBreaks()) + " broken, " + bps);
         }
+    }
+
+    /** Kills, kills/h, most-killed mobs, and for grinds: drop odds and "since last drop". */
+    private static void addCombatLines(Lines out, Session s, long now) {
+        Config c = Config.get();
+        int kills = s.totalKills();
+        double h = s.hours(now);
+        if (c.combatShowKills && kills > 0) {
+            out.add("§7Kills: §f" + Fmt.num(kills) + (h >= 1.0 / 60 ? String.format(Locale.US, " §8(%,.0f/h)", kills / h) : ""));
+            if (s.grind == null && s.kills.size() > 1) {
+                var top = new ArrayList<>(s.kills.entrySet());
+                top.sort((a, b) -> b.getValue() - a.getValue());
+                StringBuilder sb = new StringBuilder(" §8");
+                for (int i = 0; i < Math.min(3, top.size()); i++) sb.append(i > 0 ? ", " : "").append(top.get(i).getKey()).append(" ").append(Fmt.num(top.get(i).getValue()));
+                out.add(sb.toString());
+            }
+        }
+        if (s.grind != null) {
+            Combat.Grind g = Combat.byName(s.grind);
+            int grindKills = 0;
+            for (var e : s.kills.entrySet()) if (Combat.grindFor(e.getKey()) == g) grindKills += e.getValue();
+            if (g != null) {
+                for (String drop : g.drops()) {
+                    long n = s.dropCount(drop);
+                    Integer at = s.killsAtDrop.get(drop);
+                    String since = at != null ? ", " + Fmt.num(kills - at) + " since last" : "";
+                    out.item("§7" + drop + ": §d" + Fmt.num(n) + " " + Combat.odds(grindKills, (int) n) + since, drop);
+                }
+                if (g.specialName() != null) out.add("§7" + g.specialName() + ": §d" + s.specials + " " + Combat.odds(grindKills, s.specials));
+            }
+        }
+        if (c.combatShowPerKill && kills > 0) out.add("§7Profit/kill: §6" + Fmt.coins(s.value() / kills));
     }
 
     private static void addBossLine(Lines out, Session s, long now) {
@@ -353,18 +386,17 @@ public final class Hud {
     private static void addItems(Lines out, Session s, String type) {
         var items = sortedItems(s);
         if (items.isEmpty()) return;
-        double min = Config.get().minItemValue;
-        int max = Config.get().hudMaxItems;
-        int shown = 0, cheapCount = 0, rest = 0;
-        double cheapValue = 0;
+        int max = Math.max(1, Config.get().hudMaxItems);
         out.add("§7Items:");
-        for (var e : items) {
-            double v = e.getValue() * Prices.price(e.getKey());
-            if (Math.abs(v) < min) { cheapCount++; cheapValue += v; continue; }
-            if (shown < max) { out.item(itemLine(e), e.getKey()); shown++; } else rest++;
+        // everything fits: list it all. Too many: list the most valuable and sum up the rest in one line.
+        int show = items.size() <= max ? items.size() : max - 1;
+        for (int i = 0; i < show; i++) out.item(itemLine(items.get(i)), items.get(i).getKey());
+        if (show < items.size()) {
+            double rest = 0;
+            for (int i = show; i < items.size(); i++) rest += items.get(i).getValue() * Prices.price(items.get(i).getKey());
+            int n = items.size() - show;
+            out.add("§8 + " + n + " other item" + (n > 1 ? "s" : "") + " (" + Fmt.coins(rest) + ") §8/" + command(type));
         }
-        if (rest > 0) out.add("§8 ...and " + rest + " more (/" + command(type) + ")");
-        if (cheapCount > 0) out.add("§8 " + cheapCount + " cheap item" + (cheapCount > 1 ? "s" : "") + " (" + Fmt.coins(cheapValue) + ")");
     }
 
     /** The item that made the most money, e.g. "Enchanted Wheat (1.2M)". */

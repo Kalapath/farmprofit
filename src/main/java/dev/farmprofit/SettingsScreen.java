@@ -323,7 +323,7 @@ public final class SettingsScreen extends Screen {
     @Override
     public void onClose() {
         applyPending();
-        Minecraft.getInstance().setScreen(parent);
+        Compat.setScreen(Minecraft.getInstance(), parent);
     }
 
     // ---------------- opening ----------------
@@ -335,9 +335,9 @@ public final class SettingsScreen extends Screen {
     public static void requestOpen(String tab) { category = tab; query = ""; openNextTick = true; }
 
     static void tick(Minecraft mc) {
-        if (openNextTick && mc.screen == null) {
+        if (openNextTick && Compat.screen(mc) == null) {
             openNextTick = false;
-            mc.setScreen(new SettingsScreen());
+            Compat.setScreen(mc, new SettingsScreen());
         }
     }
 }

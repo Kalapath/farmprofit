@@ -26,6 +26,18 @@ public final class Dedupe {
         if (skyblocker || odin || routes) out.add(new Overlap("secretFinder", "Dungeon secret finder",
                 skyblocker ? "Skyblocker" : odin ? "Odin" : "Secret Routes"));
         if (skyhanni) out.add(new Overlap("contestAlert", "Jacob's contest reminder", "SkyHanni"));
+        if (skyhanni) out.add(new Overlap("enchantColors", "Enchantment colors", "SkyHanni"));
+        if (skyblocker || odin) {
+            String who = skyblocker ? "Skyblocker" : "Odin";
+            out.add(new Overlap("solveWeirdos", "Three Weirdos solver", who));
+            out.add(new Overlap("solveBlaze", "Blaze puzzle helper", who));
+            out.add(new Overlap("solveTerminals", "Terminal solvers", who));
+            out.add(new Overlap("solveIceFill", "Ice Fill solver", who));
+            out.add(new Overlap("solveCreeper", "Creeper Beams solver", who));
+            out.add(new Overlap("solveTicTacToe", "Tic Tac Toe solver", who));
+            out.add(new Overlap("solveQuiz", "Quiz solver", who));
+            out.add(new Overlap("solveMelody", "Melody terminal helper", who));
+        }
         return out;
     }
 

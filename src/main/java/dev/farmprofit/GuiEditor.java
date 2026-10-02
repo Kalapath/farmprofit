@@ -9,7 +9,7 @@ final class GuiEditor {
     static void open() { openNextTick = true; }
 
     static void tick(Minecraft mc) {
-        if (!openNextTick || mc.screen != null) return;
+        if (!openNextTick || Compat.screen(mc) != null) return;
         openNextTick = false;
         Object chat = null;
         try {
@@ -26,7 +26,7 @@ final class GuiEditor {
         } catch (Throwable ignored) {}
         if (chat instanceof net.minecraft.client.gui.screens.Screen screen) {
             HudRenderer.editMode = true;
-            mc.setScreen(screen);
+            Compat.setScreen(mc, screen);
             Tracker.say("§6[Profit] §7HUD editor: drag panels, middle-click to resize, right-click a title to hide it. Close chat when done.");
         } else {
             Tracker.say("§6[Profit] §7Open chat (§fT§7) to edit the HUD: drag panels, middle-click to resize, right-click a title to hide.");

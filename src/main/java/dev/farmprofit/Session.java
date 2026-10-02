@@ -23,6 +23,14 @@ public final class Session {
     public int treeGifts;
     public int trophyFish;
     public int slayerQuests;
+    /** Kills by mob name (combat). */
+    public Map<String, Integer> kills = new LinkedHashMap<>();
+    /** The mob being farmed if this is a grind (e.g. "Zealot"), else null. */
+    public String grind;
+    /** e.g. Special Zealots seen. */
+    public int specials;
+    /** Kill count when each tracked drop last dropped (for "since last drop"). */
+    public Map<String, Integer> killsAtDrop = new LinkedHashMap<>();
     public int runs;
     public int visitors;
     public long copper;
@@ -80,13 +88,21 @@ public final class Session {
     public boolean isDiana() { return Tracker.DIANA.equals(type); }
 
     public boolean isEmpty() {
-        return totalBreaks() == 0 && runs == 0 && burrows == 0 && visitors == 0 && items.isEmpty() && coins == 0 && (rareDrops == null || rareDrops.isEmpty())
+        return totalBreaks() == 0 && totalKills() == 0 && runs == 0 && burrows == 0 && visitors == 0 && items.isEmpty() && coins == 0 && (rareDrops == null || rareDrops.isEmpty())
                 && (shards == null || shards.isEmpty());
     }
 
     public void addBreak(String what) { breaks.merge(what, 1, Integer::sum); }
 
+    /** For grinds: remember at which kill a tracked drop came. */
+    public void noteDrop(String name) {
+        if (grind == null) return;
+        Combat.Grind g = Combat.byName(grind);
+        if (g != null && g.drops().contains(name)) killsAtDrop.put(name, totalKills());
+    }
+
     public void addItem(String name, long delta) {
+        if (delta > 0) noteDrop(name);
         long v = items.merge(name, delta, Long::sum);
         if (v == 0) items.remove(name);
     }
@@ -158,6 +174,19 @@ public final class Session {
         int t = 0;
         if (shards != null) for (int v : shards.values()) t += v;
         return t;
+    }
+
+    public int totalKills() {
+        int t = 0;
+        if (kills != null) for (int v : kills.values()) t += v;
+        return t;
+    }
+
+    /** How many of a drop this session got (counted as an item or a rare drop). */
+    public long dropCount(String name) {
+        long n = items.getOrDefault(name, 0L);
+        if (rareDrops != null) n = Math.max(n, rareDrops.getOrDefault(name, 0));
+        return Math.max(0, n);
     }
 
     public int totalPests() {

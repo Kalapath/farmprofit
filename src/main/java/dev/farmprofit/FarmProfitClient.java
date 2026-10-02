@@ -10,11 +10,14 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -46,29 +49,37 @@ public final class FarmProfitClient implements ClientModInitializer {
                 "key.farmprofit.settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, category));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (settingsKey.consumeClick()) {
-                if (client.screen == null) client.setScreen(new SettingsScreen());
+                if (Compat.noScreen(client)) Compat.setScreen(client, new SettingsScreen());
             }
         });
 
         Config.load();
         Prices.refresh();
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("hypixel-mod-api")) HypixelLocation.init();
-        ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> PriceTooltip.add(stack, lines));
+        ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
+            Enchants.color(lines);
+            PriceTooltip.add(stack, lines);
+            CraftCost.add(stack, lines);
+            TooltipScroll.apply(lines);
+        });
+        // mouse wheel inside menus scrolls long tooltips (and only then; otherwise the menu scrolls as usual)
+        java.util.Set<Object> overlaid = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+        ScreenEvents.BEFORE_INIT.register((client, screen, w, h) -> {
+            ScreenMouseEvents.allowMouseScroll(screen).register((s, mouseX, mouseY, horizontal, vertical) ->
+                    TooltipScroll.onScroll(vertical));
+            if (overlaid.add(screen)) ScreenOverlay.register(screen);     // terminal solvers draw on menus
+        });
 
         // Crops (farming breaks happen on the client)
-        ClientPlayerBlockBreakEvents.AFTER.register((level, player, pos, state) -> {
-            if (Tracker.MINING.equals(Tracker.area) || Tracker.FORAGING.equals(Tracker.area)) return;
-            var key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-            String crop = Items.cropFor(key.getPath());
-            if (crop != null) Tracker.onCropBroken(crop);
+        ClientPlayerBlockBreakEvents.AFTER.register((level, player, pos, state) -> Tracker.onClientBreak(pos, state));
+        AttackBlockCallback.EVENT.register((player, level, hand, pos, direction) -> {
+            if (player == Minecraft.getInstance().player) Tracker.onStartBreak(pos);
+            return InteractionResult.PASS;
         });
 
         // Hitting mobs: combat / sea creatures / pests / keeps mining & foraging alive
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
-            if (player == Minecraft.getInstance().player) {
-                String type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getPath();
-                Tracker.onAttack(type, entity.isInvisible());
-            }
+            if (player == Minecraft.getInstance().player) Tracker.onAttackEntity(entity);
             return InteractionResult.PASS;
         });
 
@@ -107,7 +118,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                 Identifier.fromNamespaceAndPath("farmprofit", "hud"), (graphics, delta) -> {
                     Minecraft mc = Minecraft.getInstance();
                     Config cfg = Config.get();
-                    boolean chat = mc.screen instanceof ChatScreen;
+                    boolean chat = Compat.screen(mc) instanceof ChatScreen;
                     if (!chat) HudEditor.reset();
                     if (!cfg.hudEnabled || mc.options.hideGui || mc.player == null) return;
 
@@ -173,6 +184,20 @@ public final class FarmProfitClient implements ClientModInitializer {
             dispatcher.register(buildCommand("kuudraprofit", Tracker.KUUDRA));
             dispatcher.register(buildCommand("dianaprofit", Tracker.DIANA));
             dispatcher.register(FlipsCommand.build());
+            dispatcher.register(ClientCommands.literal("talismans")
+                    .executes(ctx -> { Accessories.show(Config.get().talismanCount); return 1; })
+                    .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 50))
+                            .executes(ctx -> { Accessories.show(IntegerArgumentType.getInteger(ctx, "count")); return 1; })));
+            dispatcher.register(ClientCommands.literal("calc")
+                    .then(ClientCommands.argument("sum", StringArgumentType.greedyString()).executes(ctx -> {
+                        String sum = StringArgumentType.getString(ctx, "sum");
+                        double v = Calc.eval(sum);
+                        if (Double.isNaN(v)) { Tracker.say("§6[Calc] §c\"" + sum + "\" isn't a sum. §7Examples: 64x8, 10m/3, (2.5k+500)*4"); return 1; }
+                        String r = Calc.format(v);
+                        Chat.copy(r);
+                        Tracker.say("§6[Calc] §7" + sum + " §f= §a" + r + " §8(" + Fmt.coins(v) + ", copied)");
+                        return 1;
+                    })));
             dispatcher.register(ClientCommands.literal("profitsettings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }));
         });
         LOG.info("Profit Counter loaded");
@@ -248,7 +273,17 @@ public final class FarmProfitClient implements ClientModInitializer {
                             Panels.reset();
                             Tracker.say("§6[Profit] §7HUD layout reset.");
                             return 1;
-                        })))
+                        }))
+                        .then(ClientCommands.literal("preset").then(ClientCommands.argument("layout", StringArgumentType.word())
+                                .suggests((c, b) -> { for (String n : new String[]{"left", "right", "split", "compact"}) b.suggest(n); return b.buildFuture(); })
+                                .executes(ctx -> {
+                                    var win = Minecraft.getInstance().getWindow();
+                                    String n = StringArgumentType.getString(ctx, "layout").toLowerCase();
+                                    if (Panels.preset(n, win.getGuiScaledWidth(), win.getGuiScaledHeight()))
+                                        Tracker.say("§6[Profit] §7Layout §f" + n + " §7applied. Fine-tune with /profit gui.");
+                                    else Tracker.say("§6[Profit] §7Layouts: §fleft, right, split, compact");
+                                    return 1;
+                                }))))
                 .then(ClientCommands.literal("note")
                         .then(ClientCommands.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
                             String type = typeFor(fixed);

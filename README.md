@@ -51,6 +51,57 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 5.2
+- **`/talismans [count]`**: the next accessories to get, ranked by **coins per Magical Power**, using the cheaper of the
+  Auction House (lowest BIN) and crafting. Upgrade chains are understood (Talisman → Ring → Artifact): if you own a lower
+  tier, only the extra MP counts and the part you own is free in the craft cost. One entry per chain (the best value tier).
+  Click an entry to search the AH or open its recipe. What you own is read when you open your **Accessory Bag** (open
+  every page once, and again after buying). Settings → Items & areas: how many to list, include crafting, max price.
+  Accessories only sold by NPCs or not tradeable have no price here and are skipped.
+
+## New in 5.1
+More dungeon puzzle solvers. Answers appear as **particles in the world** that only you see, plus a line on the HUD:
+- **Ice Fill**: a green path over every ice tile from where you stand (recalculated as you walk).
+- **Creeper Beams**: each lantern pair to connect gets its own particle colour and a line through the creeper.
+- **Teleport Maze**: after each teleport, the pad most in the direction you face (toward the exit) is marked; used pads are skipped.
+- **Tic Tac Toe**: reads the X / O maps on the wall and marks the best button (unbeatable play).
+- **Quiz (Ouro)**: tells you the right answer letter, using the maintained Skytils answer list (and works out "What SkyBlock year is it?" itself).
+- **Melody terminal** (F7): the button turns green when it's time to click.
+Each one can be turned off in Settings → Dungeons. Still not included: Boulder and Water Board (see below).
+
+## New in 5.0
+- **Two Minecraft versions**: every build now makes a jar for **26.1.x** and one for **26.2** (Actions → Artifacts:
+  `farmprofit-mc26.1.2` and `farmprofit-mc26.2`). If one version fails to build, the other still does.
+- **Craft cost** in tooltips: what an item costs to craft from bought ingredients (each ingredient bought or crafted,
+  whichever is cheaper), and whether crafting or buying is cheaper. Recipes: NEU item repository, downloaded weekly.
+- **Calculator**: in Bazaar / Auction amount signs type a sum ending in `=` (`64x8=`, `10m/3=`, `(2.5k+500)*4=`) and it
+  becomes the number; while typing, the result is previewed above your hotbar. Also `/calc <sum>` (copies the result).
+- **HUD layout presets**: `/profit gui preset left | right | split | compact`.
+- **Puzzle solvers** (Dungeons settings): Three Weirdos (tells you which chest), Blaze puzzle (lowest / highest blaze with
+  arrows), and Floor 7 / Master 7 terminals (Correct all the panes, Click in order, What starts with, Select all the
+  [color] items, Change all to same color — highlights what to click; you still click).
+- `MODRINTH.md`: ready-made project description if you publish the mod.
+
+## New in 4.3
+- Scrollable tooltips: item descriptions taller than the screen can be scrolled with the mouse wheel while you hover
+  the item in a menu. The name stays at the top and "▲ / ▼ N more" shows what's hidden. Settings → Items & areas.
+
+## New in 4.2
+- Enchantment colors in tooltips: **perfect** (absolute max, gold + ✦), **great** (above the enchanting-table max, purple),
+  **good** (table max, blue), **low** (gray). Ultimate enchants stay bold. All colors (including rainbow) are in
+  Settings → Items & areas. Max levels come from the public SkyKings Bot-Data file, so new enchants work automatically.
+  If you also run SkyHanni, the duplicate check offers to turn one of the two off.
+
+## New in 4.1
+- Foraging starts reliably: instant log breaks (Sweep) are counted, breaks are detected from the first hit, and chopping
+  5 logs anywhere starts a Foraging session even if the island isn't recognised.
+- Combat HUD: kills, kills/h, most-killed mobs, profit per kill (mob names read from Hypixel's nametags).
+- Grind HUDs: when most kills are one farmable mob (Zealot, Enderman/Voidling, Ghost, Blaze, Wither Skeleton,
+  Magma Cube, Ice/Glacite Walker, Arachne's spiders) the HUD becomes e.g. "✦ Zealot grind" with each key drop's
+  count, odds (1 per X kills) and kills since the last one, plus Special Zealots.
+- The "cheap items" option is gone: items are listed one by one, and only when there are more than "Items shown"
+  are the cheapest added up into one line.
+
 ## New in 4.0
 - **Setup check** the first time you join SkyBlock (reopen with `/profit setup`): ✔/✖ for location, Stats and Powders
   widgets, sidebar, prices and the Hypixel Mod API, with a button that opens Hypixel's `/widget` menu.

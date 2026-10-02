@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -158,28 +159,72 @@ public final class Tracker {
             "boat", "minecart", "chest_boat", "end_crystal", "leash_knot", "mannequin");
     private static final java.util.ArrayDeque<Long> combatHits = new java.util.ArrayDeque<>();
 
-    public static void onAttack(String entityType, boolean invisible) {
-        if (NOT_MOBS.contains(entityType)) return;
+    /** A kill of a mob you hit (see Combat). target = the session the hit went to. */
+    public static void onKill(String mob, String target) {
+        if (!COMBAT.equals(target)) return;
+        Session s = sessions.get(COMBAT);
+        if (s == null) return;
+        s.kills.merge(mob, 1, Integer::sum);
+        Debug.saw("kill");
+        updateGrind(s);
+    }
+
+    /** Becomes a grind once most kills are one farmable mob. */
+    private static void updateGrind(Session s) {
         Config c = Config.get();
-        if (recent(FISHING, c.fishingActiveSeconds * 1000L)) { activity(FISHING); return; }   // sea creatures
-        if (recent(DIANA, SHOWN_WINDOW_MS)) { activity(DIANA); return; }                        // mythological mobs
-        if (KUUDRA.equals(area)) { activity(KUUDRA); return; }
+        if (!c.grindHuds) { s.grind = null; return; }
+        Map<String, Integer> byGrind = new HashMap<>();
+        for (var e : s.kills.entrySet()) {
+            Combat.Grind g = Combat.grindFor(e.getKey());
+            if (g != null) byGrind.merge(g.name(), e.getValue(), Integer::sum);
+        }
+        int total = s.totalKills();
+        String best = null;
+        int bestN = 0;
+        for (var e : byGrind.entrySet()) if (e.getValue() > bestN) { bestN = e.getValue(); best = e.getKey(); }
+        s.grind = total >= 5 && best != null && bestN * 100 >= total * c.grindShare ? best : null;
+    }
+
+    /** Called with the real entity so kills and mob names can be tracked. */
+    public static void onAttackEntity(Entity mob) {
+        String type = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).getPath();
+        if (NOT_MOBS.contains(type)) return;
+        String name = Combat.nameOf(mob);
+        String target = onAttack(type, mob.isInvisible(), Combat.grindFor(name) != null);
+        if (target != null) Combat.hit(mob, name, target);
+    }
+
+    /** Returns which session the hit went to (or null). */
+    public static String onAttack(String entityType, boolean invisible, boolean grindMob) {
+        if (NOT_MOBS.contains(entityType)) return null;
+        Config c = Config.get();
+        String r = routeAttack(entityType, grindMob, c);
+        return r;
+    }
+
+    private static String routeAttack(String entityType, boolean grindMob, Config c) {
+        if (recent(FISHING, c.fishingActiveSeconds * 1000L)) { activity(FISHING); return FISHING; }   // sea creatures
+        if (recent(DIANA, SHOWN_WINDOW_MS)) { activity(DIANA); return DIANA; }                         // mythological mobs
+        if (KUUDRA.equals(area)) { activity(KUUDRA); return KUUDRA; }
+        if (DUNGEONS.equals(area)) { onDungeonAction(); return DUNGEONS; }
+        // grind mobs (Ghosts in the Mines, Zealots...) always go to Combat, wherever you are
+        if (grindMob && (sessions.containsKey(COMBAT) || !c.combatNeedsSlayer)) { activity(COMBAT); return COMBAT; }
         if (MINING.equals(area) || FORAGING.equals(area)) {
-            if (sessions.containsKey(area)) activity(area);
-            return;
+            if (sessions.containsKey(area)) { activity(area); return area; }
+            return null;
         }
         if (FARMING.equals(area)) {
-            if (sessions.containsKey(FARMING)) activity(FARMING).pestActions++;
-            return;
+            if (sessions.containsKey(FARMING)) { activity(FARMING).pestActions++; return FARMING; }
+            return null;
         }
-        if (DUNGEONS.equals(area)) { onDungeonAction(); return; }
         // Combat: keep a running session going, but only start a new one after real fighting
-        if (sessions.containsKey(COMBAT)) { activity(COMBAT); return; }
-        if (c.combatNeedsSlayer) return;
+        if (sessions.containsKey(COMBAT)) { activity(COMBAT); return COMBAT; }
+        if (c.combatNeedsSlayer) return null;
         long now = System.currentTimeMillis();
         combatHits.addLast(now);
         while (!combatHits.isEmpty() && now - combatHits.peekFirst() > 30_000) combatHits.removeFirst();
-        if (combatHits.size() >= Math.max(1, c.combatStartHits)) { combatHits.clear(); activity(COMBAT); }
+        if (combatHits.size() >= Math.max(1, c.combatStartHits)) { combatHits.clear(); activity(COMBAT); return COMBAT; }
+        return null;
     }
 
     public static void onDungeonAction() {
@@ -266,9 +311,15 @@ public final class Tracker {
         }
 
         trackBlocks(mc);
+        Combat.tick(mc);
         Secrets.tick(mc);
         Contests.tick();
         Election.tick();
+        Enchants.tick();
+        CraftCost.tick();
+        WorldPuzzles.tick(mc);
+        WorldPuzzles.quizTick();
+        Calc.tick(mc);
 
         if (now - lastScoreboardCheck > 500) {
             lastScoreboardCheck = now;
@@ -278,7 +329,7 @@ public final class Tracker {
 
         Map<String, Integer> inv = scanInventory(mc);
         Session target = mostRecent();
-        boolean inMenu = mc.screen != null;
+        boolean inMenu = Compat.screen(mc) != null;
         boolean menuOk = Menus.countsIn(mc);
         if (inMenu && Menus.isVisitorMenu()) target = sessions.get(FARMING);
         boolean counting = haveSnapshot && target != null && menuOk
@@ -324,6 +375,40 @@ public final class Tracker {
 
     // ---------- mining / foraging block detection ----------
 
+    private static final java.util.ArrayDeque<Long> logBreaks = new java.util.ArrayDeque<>();
+
+    /** A block you broke on your side (instant breaks, like logs with Sweep, never show up as a slow break). */
+    public static void onClientBreak(BlockPos pos, BlockState state) {
+        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        if (MINING.equals(area) || FORAGING.equals(area)) {
+            String name = Items.blockFor(path, area);
+            if (name == null) return;
+            pending.removeIf(t -> t.pos.equals(pos));          // don't count it twice
+            activity(area).addBreak(name);
+            return;
+        }
+        String crop = Items.cropFor(path);
+        if (crop != null) { onCropBroken(crop); return; }
+        // logs anywhere else (hub forest, unknown islands): foraging after a few in a row
+        String log = Items.blockFor(path, FORAGING);
+        if (log == null) return;
+        if (sessions.containsKey(FORAGING)) { activity(FORAGING).addBreak(log); return; }
+        long now = System.currentTimeMillis();
+        logBreaks.addLast(now);
+        while (!logBreaks.isEmpty() && now - logBreaks.peekFirst() > 30_000) logBreaks.removeFirst();
+        if (logBreaks.size() >= 5) { logBreaks.clear(); activity(FORAGING).addBreak(log); }
+    }
+
+    /** You started hitting a block: remember it in case the server breaks it a moment later. */
+    public static void onStartBreak(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || (!MINING.equals(area) && !FORAGING.equals(area))) return;
+        for (Target t : pending) if (t.pos.equals(pos)) return;
+        BlockState state = mc.level.getBlockState(pos);
+        String name = Items.blockFor(BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath(), area);
+        if (name != null && pending.size() < 32) pending.add(new Target(pos.immutable(), state, name));
+    }
+
     private static void trackBlocks(Minecraft mc) {
         if (!MINING.equals(area) && !FORAGING.equals(area)) { pending.clear(); return; }
 
@@ -337,7 +422,7 @@ public final class Tracker {
             }
         }
 
-        if (mc.screen != null || !mc.options.keyAttack.isDown()) return;
+        if (Compat.screen(mc) != null || !mc.options.keyAttack.isDown()) return;
         if (!(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
 
         BlockPos pos = hit.getBlockPos();
@@ -492,6 +577,8 @@ public final class Tracker {
         String plain = strip(message.getString()).trim();
         if (PLAYER_CHAT.matcher(plain).matches()) return;
         if (Bazaar.handle(plain)) return;
+        if (Puzzles.onChat(plain)) return;
+        if (WorldPuzzles.onChat(plain)) return;
 
         scanShards(plain);
 
@@ -536,6 +623,16 @@ public final class Tracker {
             if (now - lastBossTime > 5000) activity(COMBAT).addBreak(slayerType);
             lastBossTime = now;
             return;
+        }
+
+        // ----- grind specials (e.g. "A special Zealot has spawned nearby!") -----
+        for (Combat.Grind g : Combat.GRINDS) {
+            if (g.specialMessage() != null && plain.contains(g.specialMessage())) {
+                Session s = sessions.get(COMBAT);
+                if (s != null) s.specials++;
+                Debug.saw("special " + g.name());
+                return;
+            }
         }
 
         // ----- dungeons: run finished -----
@@ -633,7 +730,7 @@ public final class Tracker {
         if (a.matches()) { item = a.group(1).trim(); count = Integer.parseInt(a.group(2)); }
         Matcher b = AMOUNT_PREFIX.matcher(item);
         if (b.matches()) { item = b.group(2).trim(); count = Integer.parseInt(b.group(1)); }
-        if (!item.isEmpty() && !item.endsWith(" Shard")) s.rareDrops.merge(item, count, Integer::sum);
+        if (!item.isEmpty() && !item.endsWith(" Shard")) { s.rareDrops.merge(item, count, Integer::sum); s.noteDrop(item); }
     }
 
     private static void scanShards(String text) {

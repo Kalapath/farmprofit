@@ -51,6 +51,58 @@ Open chat (**T**). While chat is open:
 Detected automatically from your purse on the sidebar when a quest starts (handles Aatrox discounts etc.).
 If you'd rather use a fixed number, set `slayerQuestCost` in the config (anything above 0 overrides auto-detection).
 
+## New in 8.0
+1. **Performance**: `/profit perf` shows how much time each feature uses; **Performance mode** (General) makes scans
+   and particle markers run half as often; outlines don't scan at all where nothing can glow.
+2. **Shaders**: with an Iris shader pack on, highlights switch to particle boxes automatically (Highlight style setting).
+3. **Clash-free start**: with SkyHanni / Skyblocker installed, SkyAssist's HUD starts on the right under the scoreboard.
+4. **What do you play?** in the setup screen (`/profit setup`): one click switches an activity's HUD + helpers.
+5. **Macro keys**: 6 keys that run commands (Controls → SkyAssist; commands in Settings → Keybinds & macros).
+6. **Inquisitor sharing**: [Share with party] (or auto-share) when you dig one up; party coordinates from anyone
+   (SkyAssist, SkyHanni or typed) become a light beam + HUD arrow. `/waypoints` to share / remove.
+7. **Mineshaft alert**: ding + big HUD line + [Share with party] when you find a Glacite Mineshaft.
+8. **Crystal Hollows waypoints**: Jungle Temple, Goblin Queen's Den, Mines of Divan, Precursor City... saved per lobby.
+9. **Boss health**: your slayer boss's health and timer on the Combat HUD.
+10. **Jacob's contest standing**: collected amount and medal bracket on the Farming HUD during a contest.
+11. **Storage overview**: `/itemsearch` lists everything in your Ender Chest pages and backpacks with where it is.
+12. **Extras** tab: disable swimming pose, slow swing (with swing length), rainbow maxed enchants.
+
+## New in 7.0
+- **Glowing outlines** (through walls), each with its own switch: starred dungeon mobs (gold), Wither / Blood key,
+  secret bats (green), your slayer boss (red), Zealots (purple) / Special Zealots (pink), Ghosts (white),
+  commission mobs (yellow), rare sea creatures (cyan), Minos Inquisitor (gold), pests (green).
+- **Diana burrow finder**: burrows marked from their particles (green start / red mob / gold treasure) with a HUD list,
+  and the Ancestral Spade's particle trail turned into a cyan direction beam.
+- **Fishing bite alert**: ding + "REEL IN!" when !!! appears over your bobber.
+- **Chat & sounds** settings tab: hide sack messages, ability cooldown, "blocks in the way", Garden visitor chatter,
+  Watchdog announcements, anything containing your own words; mute explosions or any server sound by name
+  ("Show sound names" helps you find them).
+- **Labels on items**: pet level, minion tier, enchanted book level.
+- **/hotm** and **/hotf**: tree guides per goal (powder grinding, gemstones, mithril, glacite, starting out;
+  Fig / Forest Whispers, Helix / Desert Whispers), from the 2026 wiki guides and recent forum threads.
+- **Farming HUD crop fortune**: now found even when the main crop isn't decided yet or the name differs
+  (Cocoa Bean, Melon Slice...), falls back to the crop of your held tool, and shows the last value seen.
+
+## New in 6.8 — green pest outline
+Pests now get Minecraft's **glowing outline in bright green** (visible through walls), made to work on Hypixel's pests
+with two small hooks, plus a dense bright-green particle box. The fire markers and trail are gone (trail can be turned
+back on). Color, outline and box can each be changed in Farming settings.
+
+## New in 6.7 — lockpick helper
+Opening a treasure chest: the spot to aim at gets a **pink dot**, and the Mining HUD says which way to move your aim
+(↑ ↓ ← →) or **✔ ON TARGET**. It follows the chest's lockpick particles live (the mod reads them with a small, safe
+hook into Minecraft's particle handling). Display only: you still aim yourself. Settings → Mining: on/off and the aim
+offset (the wiki's tip: aim 1-2 pixels above the particles; default 1).
+
+## New in 6.6 — Crystal Hollows treasure chests
+Like SkyHanni's Powder Chest Timer / Powder Grinding Tracker and Skyblocker's Treasure Chest Highlighter:
+- Every chest you uncover while mining gets a bright box, colored by time left before it despawns
+  (green > 30 s, yellow > 10 s, red), and the Mining HUD lists them with an arrow, distance and countdown
+  (the one about to disappear first on top). Opened / despawned chests drop off.
+- Chests opened and chests per minute, a "2x Powder active" line during Double Powder, and the chest loot
+  (Goblin Eggs, essence, gemstones, powder...) on the HUD and in /miningprofit. Powder itself is counted by the
+  powder tracker as before. Settings → Mining: on/off and chest lifetime.
+
 ## New in 6.5
 - Menus are drawn in layers in 26.x; the mod now draws on a **new layer** on top of each menu. Result: rarity colors in
   **every** menu with the **item drawn over the color**, and the inventory search highlights are actually visible.

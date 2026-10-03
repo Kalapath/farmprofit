@@ -58,6 +58,7 @@ public final class Hud {
             if (details) addCommissions(out, type);
             if (together && Tracker.DUNGEONS.equals(type)) Secrets.addHudLines(out);
             if (Tracker.FARMING.equals(type)) Pests.addHudLines(out);
+            if (Tracker.MINING.equals(type)) { Mineshafts.addHudLines(out); PowderChests.addHudLines(out, null); }
             return out;
         }
 
@@ -66,11 +67,14 @@ public final class Hud {
         String main = s.mainCrop();
         if (cfg.hudShowTitle) out.add(s.isCombat() && s.grind != null ? "§5§l✦ " + s.grind + " grind" : title(type));
         if (cfg.hudShowTime) out.add("§7Time: §f" + Fmt.duration(s.durationMs(now)));
-        if (s.isCombat()) addCombatLines(out, s, now);
+        if (s.isCombat()) { String boss = Glow.bossLine(); if (boss != null) out.add(boss); addCombatLines(out, s, now); }
+        if (s.isFishing()) FishingAlert.addHudLines(out);
+        if (s.isMining()) { Mineshafts.addHudLines(out); PowderChests.addHudLines(out, s); }
         if (details) addActivityLine(out, s, now);
         if (s.isCombat() && cfg.combatShowBosses && (s.totalBreaks() > 0 || s.slayerQuests > 0)) addBossLine(out, s, now);
         if ((s.isDungeons() && cfg.dungShowRuns) || (s.isKuudra() && cfg.kuudraShowRuns)) addRunLine(out, s, now);
         if (s.isDiana() && cfg.dianaShowBurrows) out.add("§7Burrows: §e" + Fmt.num(s.burrows) + rate(s.burrows, s, now));
+        if (s.isDiana()) DianaBurrows.addHudLines(out);
         if (details) {
             if (statsOn(type)) addStats(out, type, main);
             addPowder(out, s, now);
@@ -113,6 +117,7 @@ public final class Hud {
             case "main" -> { return lines(); }
             case "bazaar" -> { return Bazaar.hudLines(); }
             case "greenhouse" -> Greenhouse.addHudLines(out);
+            case "waypoints" -> Waypoints.addHudLines(out);
             case "secrets" -> {
                 if (cfg.separatePanels && Tracker.DUNGEONS.equals(Tracker.area)) Secrets.addHudLines(out);
             }
@@ -154,6 +159,10 @@ public final class Hud {
         addTotalLine(out, s.type);
         addShards(out, s, Integer.MAX_VALUE);
         addRareDrops(out, s, Integer.MAX_VALUE);
+        if (s.isMining() && s.chestsOpened > 0) {
+            out.add("§7Treasure chests opened: §6" + s.chestsOpened);
+            if (s.chestLoot != null) s.chestLoot.forEach((k, v) -> out.add(" §f" + Fmt.num(v) + "x §d" + k));
+        }
         var items = sortedItems(s);
         if (!items.isEmpty()) out.add("§7Items:");
         for (var e : items) out.item(itemLine(e), e.getKey());
@@ -269,7 +278,9 @@ public final class Hud {
         boolean any = false;
         if (Tracker.FARMING.equals(type)) {
             String f = Tracker.tab.get("Farming Fortune");
-            String c = Tracker.tab.get(main + " Fortune");
+            String[] crop = cropFortune(main);
+            String c = crop == null ? null : crop[1];
+            if (crop != null) main = crop[0] + (crop[2] != null ? " §8(last seen)" : "");
             if (f != null || c != null) {
                 any = true;
                 out.add("§7Fortune: §6" + (f != null ? f : "") + (c != null ? (f != null ? " §7+ §6" : "") + c + " §7" + main : ""));
@@ -283,6 +294,49 @@ public final class Hud {
             }
         }
         if (!any && (Tracker.FARMING.equals(type) || Tracker.isMiningType(type) || Tracker.FORAGING.equals(type) || Tracker.FISHING.equals(type))) out.add("§7Stats: §8enable the Stats tab widget");
+    }
+
+    private static final String[] CROPS = {"Wheat", "Carrot", "Potato", "Pumpkin", "Melon", "Sugar Cane", "Cactus", "Cocoa Beans",
+            "Nether Wart", "Mushroom", "Sunflower", "Moonflower", "Wild Rose"};
+    private static final java.util.Map<String, String> LAST_CROP_FORTUNE = new java.util.HashMap<>();
+
+    private static String fortuneKey(String crop) {
+        for (String k : new String[]{crop + " Fortune", crop.replaceAll("s$", "") + " Fortune",
+                crop.equals("Cocoa Beans") ? "Cocoa Fortune" : "", crop.equals("Melon") ? "Melon Slice Fortune" : "",
+                crop.equals("Mushroom") ? "Red Mushroom Fortune" : ""}) {
+            if (!k.isEmpty() && Tracker.tab.containsKey(k)) return k;
+        }
+        return null;
+    }
+
+    /** {crop, value, lastSeen?}: the main crop's fortune, else any crop fortune the tab shows, else the last one seen. */
+    private static String[] cropFortune(String main) {
+        for (String crop : CROPS) {                                   // remember every crop fortune we see
+            String k = fortuneKey(crop);
+            if (k != null) LAST_CROP_FORTUNE.put(crop, Tracker.tab.get(k));
+        }
+        String held = heldCrop();
+        for (String crop : new String[]{main, held}) {
+            if (crop == null) continue;
+            String k = fortuneKey(crop);
+            if (k != null) return new String[]{crop, Tracker.tab.get(k), null};
+        }
+        for (String crop : CROPS) { String k = fortuneKey(crop); if (k != null) return new String[]{crop, Tracker.tab.get(k), null}; }
+        for (String crop : new String[]{main, held}) if (crop != null && LAST_CROP_FORTUNE.containsKey(crop)) return new String[]{crop, LAST_CROP_FORTUNE.get(crop), "old"};
+        return null;
+    }
+
+    /** The crop your held tool is for, from its name (e.g. "Euclid's Wheat Hoe"). */
+    private static String heldCrop() {
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.player == null) return null;
+        String n = Tracker.strip(mc.player.getMainHandItem().getHoverName().getString());
+        for (String crop : CROPS) {
+            String word = crop.equals("Cocoa Beans") ? "Cocoa" : crop.equals("Nether Wart") ? "Wart" : crop.equals("Sugar Cane") ? "Cane" : crop;
+            if (n.contains(word)) return crop;
+        }
+        if (n.contains("Fungi") || n.contains("Mushroom")) return "Mushroom";
+        return null;
     }
 
     private static void addPowder(Lines out, Session s, long now) {
@@ -311,7 +365,7 @@ public final class Hud {
 
     private static void addExtras(Lines out, Session s) {
         Config c = Config.get();
-        if (s.isFarming()) Pests.addHudLines(out);
+        if (s.isFarming()) { for (String l : Contests.liveLines()) out.add(l); Pests.addHudLines(out); }
         if (s.isFarming() && s.totalPests() > 0 && c.farmShowPests) {
             var pests = new ArrayList<>(s.pests.entrySet());
             pests.sort((a, b) -> b.getValue() - a.getValue());
@@ -322,6 +376,7 @@ public final class Hud {
             }
             out.add(sb.append(pests.size() > 3 ? ", ...)" : ")").toString());
         }
+        if (s.isMining()) PowderChests.addLootLines(out, s);
         if (s.isMining() && s.pristine > 0 && c.mineShowPristine) out.add("§7Pristine procs: §d" + s.pristine);
         if (s.isFishing() && s.trophyFish > 0 && c.fishShowTrophies) {
             var tr = new ArrayList<>(s.trophies.entrySet());

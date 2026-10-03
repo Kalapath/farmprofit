@@ -11,6 +11,9 @@
   },
   "license": "MIT",
   "environment": "client",
+  "mixins": [
+    "skyassist.mixins.json"
+  ],
   "entrypoints": {
     "client": ["dev.farmprofit.FarmProfitClient"],
     "modmenu": ["dev.farmprofit.ModMenuIntegration"]

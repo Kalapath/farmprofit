@@ -29,6 +29,10 @@ public final class Config {
     public boolean switchHudOnArrival = true;
     @Setting(category = "General", label = "Session end message", desc = "Chat summary when a session ends and is saved.")
     public boolean announceSessionEnd = true;
+    @Setting(category = "General", label = "Performance mode", desc = "Scans and particle markers run half as often and less dense. Use it if SkyAssist costs you FPS (check with /profit perf).")
+    public boolean performanceMode = false;
+    @Setting(category = "General", label = "Highlight style", desc = "auto = glowing outline, but particle boxes when a shader pack (Iris) is on. outline / particles = always that.", options = {"auto", "outline", "particles"})
+    public String glowStyle = "auto";
     @Setting(category = "General", label = "Count purse coins", desc = "Coins that go straight into your purse while you're active (Bountiful reforge, mob coins, Midas, coin catches...) count as profit. Read from the sidebar; menus are ignored so selling / bank don't count.")
     public boolean trackPurse = true;
     @Setting(category = "General", label = "Number format", desc = "compact = 1.2M, full = 1,234,567.", options = {"compact", "full"})
@@ -64,17 +68,23 @@ public final class Config {
     @Setting(category = "Farming", label = "Highlight pests", desc = "Fire particles on every pest you can see, plus a list with arrows, distances and pest plots.")
     public boolean pestHighlight = true;
     @Setting(category = "Farming", label = "Trail to pests", desc = "A short particle trail from you toward each pest.")
-    public boolean pestTrail = true;
-    @Setting(category = "Farming", label = "Pest glow outline", desc = "Gives pests Minecraft's glowing outline, visible through walls.")
+    public boolean pestTrail = false;
+    @Setting(category = "Farming", label = "Pest particle box", desc = "A box of colored particles around each pest (on top of the glowing outline).")
+    public boolean pestBox = true;
+    @Setting(category = "Farming", label = "Pest glow outline", desc = "Bright outline around pests in the box color, visible through walls (Minecraft's glowing effect).")
     public boolean pestGlow = true;
-    @Setting(category = "Farming", label = "Pest box color", desc = "Color of the box around pests, as a hex number, e.g. FF3030 (red), FFFF00 (yellow), 00FFFF (cyan).", options = {"FF3030", "FFFF00", "00FFFF", "FF00FF", "00FF00", "FFFFFF"})
-    public String pestBoxColorHex = "FF3030";
+    @Setting(category = "Farming", label = "Pest box color", desc = "Color of the box around pests, as a hex number, e.g. FF3030 (red), FFFF00 (yellow), 00FFFF (cyan).", options = {"00FF00", "FFFF00", "00FFFF", "FF00FF", "FF3030", "FFFFFF"})
+    public String pestBoxColorHex = "00FF00";
+    @Setting(category = "Other", label = "pest color migrated", desc = "internal", hidden = true)
+    public boolean pestColorMigrated = false;
     @Setting(category = "Farming", label = "Greenhouse guide", desc = "When a mutation is planned (/greenhouse): markers on the plot you look at and a layout grid on the HUD.")
     public boolean greenhouseGuide = true;
     @Setting(category = "Farming", label = "Show visitors", desc = "Garden visitors accepted.")
     public boolean farmShowVisitors = true;
     @Setting(category = "Farming", label = "Contest reminder", desc = "Chat ping 1 minute before a Jacob's contest starts.")
     public boolean contestAlert = true;
+    @Setting(category = "Farming", label = "Contest standing on HUD", desc = "During a Jacob's contest: your collected amount and medal bracket (from the sidebar) on the Farming HUD.")
+    public boolean showContestStanding = true;
     @Setting(category = "Mining", label = "Show mining stats", desc = "Mining Speed / Fortune lines (needs the Stats tab widget).")
     public boolean mineShowStats = true;
     @Setting(category = "Mining", label = "Show powder", desc = "Powder gained and per hour.")
@@ -83,6 +93,22 @@ public final class Config {
     public boolean mineShowPristine = true;
     @Setting(category = "Mining", label = "Show block breakdown", desc = "Which blocks you've mined, by type.")
     public boolean mineShowBlocks = true;
+    @Setting(category = "Mining", label = "Glow: Ghosts", desc = "Ghosts in the Mist get a white outline (they're almost invisible).")
+    public boolean glowGhosts = true;
+    @Setting(category = "Mining", label = "Glow: commission mobs", desc = "Goblins, Glacite / Ice Walkers, Treasure Hoarders, Star Sentries get a yellow outline.")
+    public boolean glowCommission = true;
+    @Setting(category = "Mining", label = "Treasure chest helper", desc = "Crystal Hollows: box + despawn countdown on chests you uncover, chests opened per minute, Double Powder, and chest loot.")
+    public boolean powderChests = true;
+    @Setting(category = "Mining", label = "Mineshaft alert", desc = "Ding + big HUD line when you find a Glacite Mineshaft, with a [Share with party] button.")
+    public boolean mineshaftAlert = true;
+    @Setting(category = "Mining", label = "Crystal Hollows waypoints", desc = "Saves a waypoint when you reach Jungle Temple, Goblin Queen's Den, Mines of Divan, Precursor City... (per lobby), with a share button.")
+    public boolean chWaypoints = true;
+    @Setting(category = "Mining", label = "Treasure chest lifetime (s)", desc = "How long an uncovered chest stays before it disappears (about 60 s).", min = 10, max = 300)
+    public int chestLifetimeSeconds = 60;
+    @Setting(category = "Mining", label = "Lockpick helper", desc = "Marks the lockpick spot on treasure chests with a pink dot and shows on the HUD which way to move your aim. Display only: you aim yourself.")
+    public boolean lockpickHelper = true;
+    @Setting(category = "Mining", label = "Lockpick aim offset (pixels)", desc = "How far above the particles to mark the spot (the wiki says 1-2 pixels above). 0 = exactly on the particles.", min = -4, max = 6)
+    public int lockpickOffset = 1;
     @Setting(category = "Mining", label = "Blocks listed", desc = "How many block types the breakdown shows.", min = 1, max = 20)
     public int mineBlocksShown = 4;
     @Setting(category = "Foraging", label = "Show foraging stats", desc = "Sweep / Foraging Fortune lines (needs the Stats tab widget).")
@@ -95,6 +121,10 @@ public final class Config {
     public boolean countAnyLog = true;
     @Setting(category = "Fishing", label = "Show fishing stats", desc = "Fishing Speed, Sea Creature Chance... (needs the Stats tab widget).")
     public boolean fishShowStats = true;
+    @Setting(category = "Fishing", label = "Glow: rare sea creatures", desc = "Thunder, Lord Jawbus, Sea Emperor, Water Hydra, Yeti... get a cyan outline.")
+    public boolean glowSeaCreatures = true;
+    @Setting(category = "Fishing", label = "Bite alert", desc = "A ding and a big \"REEL IN!\" on the HUD when Hypixel shows !!! over your bobber.")
+    public boolean fishingAlert = true;
     @Setting(category = "Fishing", label = "Show location", desc = "Where you're fishing.")
     public boolean fishShowLocation = true;
     @Setting(category = "Fishing", label = "Show trophy fish", desc = "Trophy fish by type.")
@@ -111,6 +141,12 @@ public final class Config {
     public boolean combatShowBosses = true;
     @Setting(category = "Combat & Slayers", label = "Show kills", desc = "Kills, kills per hour and the mobs you killed most.")
     public boolean combatShowKills = true;
+    @Setting(category = "Combat & Slayers", label = "Glow: your slayer boss", desc = "Your own slayer boss (not other players') gets a red outline.")
+    public boolean glowSlayer = true;
+    @Setting(category = "Combat & Slayers", label = "Boss health on HUD", desc = "Your slayer boss's health and time left on the Combat HUD.")
+    public boolean showBossHealth = true;
+    @Setting(category = "Combat & Slayers", label = "Glow: Zealots", desc = "Zealots purple, Special Zealots pink.")
+    public boolean glowZealots = true;
     @Setting(category = "Combat & Slayers", label = "Grind HUDs", desc = "When most of your kills are one farmable mob (Zealots, Ghosts, Endermen...), the Combat HUD turns into a grind HUD with drop odds and 'since last drop'.")
     public boolean grindHuds = true;
     @Setting(category = "Combat & Slayers", label = "Grind kills share %", desc = "How much of your kills must be one grind mob before the grind HUD appears.", min = 30, max = 100)
@@ -179,8 +215,12 @@ public final class Config {
     public boolean tooltipScroll = true;
     @Setting(category = "Items & areas", label = "Inventory search box", desc = "A search box under every inventory and menu: matching items are highlighted, the rest dimmed.")
     public boolean inventorySearch = true;
+    @Setting(category = "Items & areas", label = "Storage overview", desc = "Remembers your Ender Chest pages and backpacks when you open them; /itemsearch lists everything with where it is.")
+    public boolean storageOverview = true;
     @Setting(category = "Items & areas", label = "Rarity colors on items", desc = "Colors each item's slot by its rarity (white, green, blue, purple, gold, pink...) in menus.")
     public boolean rarityBackground = true;
+    @Setting(category = "Items & areas", label = "Labels on items", desc = "Pet level, minion tier and enchanted book level shown on the item in menus.")
+    public boolean itemLabels = true;
     @Setting(category = "Items & areas", label = "Rarity colors on hotbar", desc = "The same rarity colors on your hotbar.")
     public boolean rarityHotbar = true;
     @Setting(category = "Items & areas", label = "Rarity color strength", desc = "0 = invisible, 255 = solid.", min = 0, max = 255)
@@ -223,6 +263,48 @@ public final class Config {
     public boolean talismanUseCraft = true;
     @Setting(category = "Items & areas", label = "Talismans: max price", desc = "Skip accessories costing more than this. 0 = no limit.", min = 0, max = 1e13)
     public double talismanMaxPrice = 0;
+    @Setting(category = "Chat & sounds", label = "Hide sack messages", desc = "Hides the \"[Sacks] +X items\" lines (they're still counted).")
+    public boolean chatHideSacks = false;
+    @Setting(category = "Chat & sounds", label = "Hide ability cooldown", desc = "Hides \"This ability is on cooldown\".")
+    public boolean chatHideCooldown = true;
+    @Setting(category = "Chat & sounds", label = "Hide \"blocks in the way\"", desc = "Hides \"There are blocks in the way!\" (teleport items).")
+    public boolean chatHideBlocksInWay = true;
+    @Setting(category = "Chat & sounds", label = "Hide visitor chatter", desc = "Hides [NPC] lines while in the Garden (visitor offers are still read).")
+    public boolean chatHideVisitorChat = false;
+    @Setting(category = "Chat & sounds", label = "Hide Watchdog announcements", desc = "Hides Watchdog / staff ban announcements.")
+    public boolean chatHideWatchdog = true;
+    @Setting(category = "Chat & sounds", label = "Hide messages containing", desc = "Comma separated words or phrases; any chat line containing one is hidden.")
+    public java.util.List<String> chatHideContaining = new java.util.ArrayList<>();
+    @Setting(category = "Chat & sounds", label = "Mute explosions", desc = "Mutes explosion sounds sent by the server.")
+    public boolean muteExplosions = false;
+    @Setting(category = "Chat & sounds", label = "Muted sounds", desc = "Comma separated sound names (or parts of names) to mute. Turn on 'Show sound names' to find them.")
+    public java.util.List<String> mutedSounds = new java.util.ArrayList<>();
+    @Setting(category = "Chat & sounds", label = "Show sound names", desc = "Prints each new sound's name in chat once, so you can add it to Muted sounds. Turn off after.")
+    public boolean logSounds = false;
+    @Setting(category = "General", label = "Waypoints from party chat", desc = "Coordinates your party posts in chat (x: y: z: or three numbers) become a light beam + HUD arrow.")
+    public boolean partyWaypoints = true;
+    @Setting(category = "General", label = "Party waypoint time (s)", desc = "How long a waypoint from party chat stays.", min = 10, max = 1800)
+    public int waypointSeconds = 120;
+    @Setting(category = "Extras", label = "Disable swimming pose", desc = "Stay upright in water instead of swimming / crawling (your player only, visual).")
+    public boolean disableSwimming = false;
+    @Setting(category = "Extras", label = "Slow swing", desc = "Your arm swing animation is slower, like the old 1.8 swing (visual only).")
+    public boolean slowSwing = false;
+    @Setting(category = "Extras", label = "Swing length (ticks)", desc = "How long one swing takes with Slow swing on. Vanilla is 6; 10-14 looks like 1.8.", min = 2, max = 40)
+    public int swingDuration = 12;
+    @Setting(category = "Extras", label = "Rainbow maxed enchants", desc = "Maxed enchantments in tooltips are rainbow-colored (sets the Perfect enchant color).")
+    public boolean rainbowMaxed = false;
+    @Setting(category = "Keybinds & macros", label = "Macro 1 command", desc = "What Macro 1 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro1 = "/warp garden";
+    @Setting(category = "Keybinds & macros", label = "Macro 2 command", desc = "What Macro 2 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro2 = "/bz";
+    @Setting(category = "Keybinds & macros", label = "Macro 3 command", desc = "What Macro 3 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro3 = "/pets";
+    @Setting(category = "Keybinds & macros", label = "Macro 4 command", desc = "What Macro 4 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro4 = "/wardrobe";
+    @Setting(category = "Keybinds & macros", label = "Macro 5 command", desc = "What Macro 5 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro5 = "/storage";
+    @Setting(category = "Keybinds & macros", label = "Macro 6 command", desc = "What Macro 6 runs. Set its key in Options → Controls → Key Binds → SkyAssist. Commands start with /, anything else is sent as chat.")
+    public String macro6 = "/warp hub";
     @Setting(category = "General", label = "Reset after (minutes)", desc = "Minutes without activity before a session ends and is saved to history.", min = 1, max = 600)
     public int resetMinutes = 15;
     /**
@@ -256,6 +338,12 @@ public final class Config {
     public boolean showKuudraHud = true;
     @Setting(category = "Diana", label = "Diana HUD", desc = "Show the Diana (Mythological Ritual) HUD (tracking keeps running when hidden).")
     public boolean showDianaHud = true;
+    @Setting(category = "Diana", label = "Glow: Minos Inquisitor", desc = "Minos Inquisitors get a gold outline.")
+    public boolean glowInquisitor = true;
+    @Setting(category = "Diana", label = "Burrow finder", desc = "Marks burrows from their particles (green start, red mob, gold treasure) and turns the Ancestral Spade's particle trail into a cyan direction beam.")
+    public boolean dianaHelper = true;
+    @Setting(category = "Diana", label = "Auto-share Inquisitor", desc = "Post your coordinates in party chat automatically when you dig up a Minos Inquisitor (off = a [Share] button instead).")
+    public boolean autoShareInquisitor = false;
     @Setting(category = "HUD", label = "Show all-time line", desc = "Adds your all-time profit and profit/h for the activity under the session numbers.")
     public boolean hudShowTotal = false;
     @Setting(category = "HUD", label = "Show mayor", desc = "Shows the mayor on the HUD of the activity they boost.")
@@ -301,6 +389,12 @@ public final class Config {
     /** Dungeon secret finder on the Catacombs HUD. */
     @Setting(category = "Dungeons", label = "Dungeon secret finder", desc = "Room counter and nearby secret list on the Catacombs HUD.")
     public boolean secretFinder = true;
+    @Setting(category = "Dungeons", label = "Glow: starred mobs", desc = "Starred mobs (the ones that count for clearing a room) get a gold outline through walls.")
+    public boolean glowStarred = true;
+    @Setting(category = "Dungeons", label = "Glow: Wither / Blood key", desc = "The dropped Wither Key (dark) and Blood Key (red) get an outline.")
+    public boolean glowKeys = true;
+    @Setting(category = "Dungeons", label = "Glow: bats", desc = "Secret bats get a green outline.")
+    public boolean glowBats = true;
     @Setting(category = "Dungeons", label = "Show run info", desc = "Your secrets, team secrets %, crypts and deaths on the Catacombs HUD.")
     public boolean dungShowRunInfo = true;
     @Setting(category = "Dungeons", label = "Chest profit in chat", desc = "When you open a reward chest or Croesus, show each chest's value, cost and profit.")
@@ -402,6 +496,10 @@ public final class Config {
         if (instance.extraOreBlocks == null) instance.extraOreBlocks = new HashMap<>();
         if (instance.countInMenus == null) instance.countInMenus = new java.util.ArrayList<>(java.util.List.of(
                 "Wood Chest", "Gold Chest", "Diamond Chest", "Emerald Chest", "Obsidian Chest", "Bedrock Chest"));
+        if ("FF3030".equals(instance.pestBoxColorHex) && !instance.pestColorMigrated) { instance.pestBoxColorHex = "00FF00"; instance.pestTrail = false; }
+        instance.pestColorMigrated = true;
+        if (instance.chatHideContaining == null) instance.chatHideContaining = new java.util.ArrayList<>();
+        if (instance.mutedSounds == null) instance.mutedSounds = new java.util.ArrayList<>();
         if (instance.ignoredItems == null) instance.ignoredItems = new java.util.ArrayList<>();
         if (instance.miningAreas == null) instance.miningAreas = new java.util.ArrayList<>(java.util.List.of(
                 "Dwarven Mines", "Crystal Hollows", "Mineshaft", "Glacite", "Deep Caverns", "Gold Mine"));

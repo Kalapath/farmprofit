@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 public final class Debug {
     private static final Path LOG = Config.DIR.resolve("unrecognised-messages.txt");
     private static final Pattern INTERESTING = Pattern.compile(
-            "(?i)drop!|catch!|slayer|shard|trophy|offer accepted|pest|tree gift|contest|pristine|reward|secrets|kuudra|burrow|visitor");
+            "(?i)drop!|catch!|slayer|shard|trophy|offer accepted|pest|tree gift|contest|pristine|reward|secrets|kuudra|burrow|visitor|treasure|lockpick|2x powder");
     /** How often each kind of message has been recognised. */
     public static final Map<String, Integer> SEEN = new LinkedHashMap<>();
     private static final Set<String> logged = new HashSet<>();
@@ -48,6 +48,8 @@ public final class Debug {
         Tracker.say(" " + ok(Prices.loaded()) + " §7Prices: §f" + Prices.bazaarCount() + "§7 bazaar, §f" + Prices.itemCount()
                 + "§7 items, §f" + Prices.binCount() + "§7 auction §8(" + ItemIds.LEARNED.size() + " item IDs learned)");
         Tracker.say(" " + ok(CraftCost.count() > 0) + " §7Recipes §8(" + CraftCost.count() + ")  " + maybe(ScreenOverlay.works) + " §7Menu overlay  " + maybe(InvSearch.keysWork) + " §7Search box keys");
+        Tracker.say(" " + maybe(Lockpick.hooked ? Boolean.TRUE : null) + " §7Particle hook (lockpick)  " + maybe(Glow.hooked ? Boolean.TRUE : null) + " §7Glow hook  " + maybe(Sounds.hooked ? Boolean.TRUE : null) + " §7Sound hook");
+        Tracker.say(" §7Shaders: " + (Glow.shadersOn() ? "§eon §8(highlights use particle boxes)" : "§aoff") + "  §7Highlight style: §f" + Config.get().glowStyle);
         Tracker.say(" " + ok(Shards.count() > 0) + " §7Shards known §8(" + Shards.count() + ")  " + maybe(InvSearch.works) + " §7Inventory search");
         Tracker.say(" " + ok(Accessories.count() > 0) + " §7Accessories known §8(" + Accessories.count() + ")");
         Tracker.say(" " + ok(WorldPuzzles.quizCount() > 0) + " §7Quiz answers §8(" + WorldPuzzles.quizCount() + ")");

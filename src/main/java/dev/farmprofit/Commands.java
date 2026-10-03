@@ -54,6 +54,7 @@ public final class Commands {
         add("HUD", "/profit scale <0.5-3>", "Size of the main HUD panel.");
         add("HUD", "/profit move <x> <y>", "Moves the main HUD panel to an exact spot.");
         add("HUD", "/profit secrets", "Dungeon secret finder on or off.");
+        add("HUD", "Crystal Hollows treasure chests", "Automatic: box + countdown on uncovered chests, chests/min, Double Powder, loot (Mining settings).");
 
         add("Bazaar", "/flips", "Flip finder, plan, your orders and flip profit (menu).");
         add("Bazaar", "/flips chat", "Best flips in chat (click one to open it in the Bazaar).");
@@ -77,6 +78,11 @@ public final class Commands {
         add("Dungeons", "/dungeonprofit", "Dungeon profit: runs per hour, profit per run (menu).");
         add("Tools", "/talismans", "Cheapest Magical Power you don't have yet (menu); \"Other ways\" lists quest / drop ones.");
         add("Tools", "/shards", "Cheapest attribute levels to buy next, or to max (menu).");
+        add("Tools", "/itemsearch", "Everything in your Ender Chest and backpacks, searchable, with where it is (menu).");
+        add("Tools", "/waypoints", "Waypoints from party chat and Crystal Hollows places; share or remove them (menu).");
+        add("Tools", "Macro keys", "Six keys that run commands: set keys in Controls → SkyAssist, commands in Settings → Keybinds & macros.");
+        add("Tools", "/hotm", "Best Heart of the Mountain trees: powder grinding, gemstones, mithril, glacite, starting out.");
+        add("Tools", "/hotf", "Best Heart of the Forest trees: Fig (Forest Whispers), Helix (Desert Whispers), basics.");
         add("Tools", "/greenhouse", "Pick a mutation: what to unlock first, and a planting layout in the world (menu).");
         add("Tools", "Search box under any inventory", "Type to highlight matching items (name or description).");
         add("Tools", "/talismans chat", "The same list in chat.");
@@ -85,6 +91,7 @@ public final class Commands {
         add("Tools", "Chat open (T) over the HUD", "Drag panels to move them, right-click an item to stop counting it.");
 
         add("Settings & help", "/profit setup", "First-time check: what the mod can see and what to turn on.");
+        add("Settings & help", "/profit perf", "How much time each feature uses (to find FPS problems). /profit perf reset starts over.");
         add("Settings & help", "/profit debug", "What's working (location, prices, overlays, recognised messages).");
         add("Settings & help", "/profit report", "Copies a diagnostics report to paste when asking for help.");
         add("Settings & help", "/profit dedupe", "Turns off features that SkyHanni / Skyblocker / Odin already do.");

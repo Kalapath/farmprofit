@@ -116,7 +116,7 @@ public final class Enchants {
                 int lvl = level(m.group(2));
                 boolean ultimate = info[2] == 1;
                 String color;
-                if (lvl >= info[1]) color = c.enchantPerfectColor;
+                if (lvl >= info[1]) color = c.rainbowMaxed ? "rainbow" : c.enchantPerfectColor;
                 else if (info[0] > 0 && lvl > info[0]) color = c.enchantGreatColor;
                 else if (info[0] > 0 && lvl == info[0]) color = c.enchantGoodColor;
                 else color = c.enchantPoorColor;

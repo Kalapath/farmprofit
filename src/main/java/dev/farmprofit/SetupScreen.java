@@ -59,7 +59,21 @@ public final class SetupScreen extends Screen {
                 y += 12;
             }
         }
-        int by = Math.max(y + 12, height - 56);
+        // What do you play? (switches each activity's HUD and helpers together)
+        y += 8;
+        addRenderableWidget(new StringWidget(left, y, 340, 10, Component.literal("§eWhat do you play? §7(click to switch an activity's HUD + helpers)"), font));
+        y += 14;
+        int bx = left, col = 0;
+        for (String group : Playstyle.GROUPS.keySet()) {
+            boolean on = Playstyle.isOn(group);
+            final String g = group;
+            addRenderableWidget(Button.builder(Component.literal((on ? "§a✔ " : "§c✖ ") + group), b -> { Playstyle.set(g, !Playstyle.isOn(g)); rebuildWidgets(); })
+                    .bounds(bx, y, 66, 18).build());
+            bx += 69;
+            if (++col % 5 == 0) { bx = left; y += 21; }
+        }
+        y += 24;
+        int by = Math.max(y + 6, height - 56);
         addRenderableWidget(Button.builder(Component.literal("Open tab widgets"), b -> {
             onClose();
             Object conn = Minecraft.getInstance().getConnection();
@@ -100,6 +114,12 @@ public final class SetupScreen extends Screen {
         UpdateCheck.start();
         if (Config.get().setupDone || shownThisLaunch || Compat.screen(mc) != null) return;
         shownThisLaunch = true;
+        boolean others = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("skyhanni")
+                || net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("skyblocker");
+        if (others && Panels.isFresh()) {
+            var win = mc.getWindow();
+            Panels.preset("right", win.getGuiScaledWidth(), win.getGuiScaledHeight());
+        }
         Compat.setScreen(mc, new SetupScreen());
     }
 }

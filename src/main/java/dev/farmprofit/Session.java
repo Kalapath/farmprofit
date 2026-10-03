@@ -21,6 +21,9 @@ public final class Session {
     public Map<String, Integer> pests = new LinkedHashMap<>();
     public int pristine;
     public int treeGifts;
+    /** Crystal Hollows treasure chests opened, and what was in them (shown, not added to profit: the items are counted when they arrive). */
+    public int chestsOpened;
+    public Map<String, Integer> chestLoot = new LinkedHashMap<>();
     public int trophyFish;
     public int slayerQuests;
     /** Kills by mob name (combat). */

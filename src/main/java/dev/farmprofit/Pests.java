@@ -22,6 +22,16 @@ public final class Pests {
     public record Pest(String name, double x, double y, double z, Entity mob) {}
 
     private static final List<Pest> pests = new ArrayList<>();
+    private static final java.util.Set<Integer> GLOWING = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    public static volatile boolean glowHooked;
+
+    /** Called by the glow hooks: should this entity get the green outline? */
+    public static boolean isHighlighted(Entity e) {
+        glowHooked = true;
+        return e != null && Config.get().pestHighlight && Config.get().pestGlow && GLOWING.contains(e.getId());
+    }
+
+    public static int glowColor() { return Config.get().pestBoxColor(); }
     private static int tick;
 
     public static void tick(Minecraft mc) {
@@ -29,20 +39,17 @@ public final class Pests {
             pests.clear();
             return;
         }
-        if (++tick % 4 == 0) scan(mc);                      // 5x a second
-        if (tick % 3 != 0) return;                          // redraw often so the box stays bright
+        if (++tick % (4 * Perf.slow()) == 0) scan(mc);     // 5x a second (half in Performance mode)
+        if (tick % (3 * Perf.slow()) != 0) return;          // redraw often so the box stays bright
         for (Pest p : pests) {
-            // glowing outline on the pest itself (visible through walls); Hypixel may reset it, so it's re-applied
-            if (p.mob() != null && Config.get().pestGlow) Reflect.call(p.mob(), "setGlowingTag", true);
-            box(p);
-            Particles.pillar(Particles.FIRE, p.x(), p.y() + 0.6, p.z());
+            if (Config.get().pestBox) box(p);
             if (Config.get().pestTrail) {
                 // a short dotted trail from you toward the pest, so you can follow it
                 double dx = p.x() - mc.player.getX(), dy = p.y() - mc.player.getY(), dz = p.z() - mc.player.getZ();
                 double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 if (d > 2) {
                     double len = Math.min(6, d - 1);
-                    Particles.line(Particles.FIRE, mc.player.getX(), mc.player.getY() + 1, mc.player.getZ(),
+                    Particles.line(Particles.dust(Config.get().pestBoxColor(), 0.8f), mc.player.getX(), mc.player.getY() + 1, mc.player.getZ(),
                             mc.player.getX() + dx / d * len, mc.player.getY() + 1 + dy / d * len, mc.player.getZ() + dz / d * len);
                 }
             }
@@ -53,6 +60,7 @@ public final class Pests {
         pests.clear();
         Object all = Reflect.call(mc.level, new String[]{"entitiesForRendering", "getEntities"});
         if (!(all instanceof Iterable<?> it)) return;
+        java.util.Set<Integer> glow = new java.util.HashSet<>();
         for (Object o : it) {
             if (!(o instanceof Entity e) || !e.hasCustomName() || e.getCustomName() == null) continue;
             String tag = Tracker.strip(e.getCustomName().getString()).trim();
@@ -60,8 +68,22 @@ public final class Pests {
             Matcher m = PEST_TAG.matcher(tag);
             if (tag.contains("ൠ") && m.find()) name = m.group(1).trim();
             if (name == null) continue;
-            pests.add(new Pest(name, e.getX(), e.getY(), e.getZ(), mobUnder(e, it)));
+            Entity mob = mobUnder(e, it);
+            pests.add(new Pest(name, e.getX(), e.getY(), e.getZ(), mob));
+            glow.add(e.getId());
+            if (mob != null) glow.add(mob.getId());
+            // the pest's model is made of armor stands wearing heads right around the tag: outline those too
+            for (Object o2 : it) {
+                if (!(o2 instanceof Entity part) || part == e) continue;
+                String t = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(part.getType()).getPath();
+                if (!t.equals("armor_stand")) continue;
+                if (Math.abs(part.getX() - e.getX()) < 1.2 && Math.abs(part.getZ() - e.getZ()) < 1.2 && part.getY() <= e.getY() + 0.5 && part.getY() > e.getY() - 2.5)
+                    glow.add(part.getId());
+            }
         }
+        GLOWING.clear();
+        GLOWING.addAll(glow);
+        Glow.setPests(glow);
         double px = mc.player.getX(), pz = mc.player.getZ();
         pests.sort((a, b) -> Double.compare(Math.hypot(a.x() - px, a.z() - pz), Math.hypot(b.x() - px, b.z() - pz)));
     }
@@ -89,12 +111,12 @@ public final class Pests {
         } else {
             x1 = p.x() - 0.6; y1 = p.y() - 1.6; z1 = p.z() - 0.6; x2 = p.x() + 0.6; y2 = p.y() + 0.2; z2 = p.z() + 0.6;
         }
-        var c = Particles.dust(Config.get().pestBoxColor(), 1.2f);
+        var c = Particles.dust(Config.get().pestBoxColor(), 1.6f);
         double[][] corners = {{x1, y1, z1}, {x2, y1, z1}, {x2, y1, z2}, {x1, y1, z2}, {x1, y2, z1}, {x2, y2, z1}, {x2, y2, z2}, {x1, y2, z2}};
         int[][] edges = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
         for (int[] e : edges) {
             double[] a = corners[e[0]], b = corners[e[1]];
-            Particles.dense(c, a[0], a[1], a[2], b[0], b[1], b[2], 0.18);
+            Particles.dense(c, a[0], a[1], a[2], b[0], b[1], b[2], 0.12 * Perf.slow());
         }
     }
 
@@ -120,6 +142,7 @@ public final class Pests {
             out.add(" §f" + arrow(p, mc) + " §c" + p.name() + " §7" + String.format(Locale.US, "%.0fm", d) + (dy > 3 ? " §7▲" : dy < -3 ? " §7▼" : ""));
         }
         if (pests.isEmpty()) out.add(" §8none nearby — check the plots above");
+        if (pests.isEmpty()) { GLOWING.clear(); Glow.setPests(java.util.Set.of()); }
     }
 
     public static boolean isPestName(String n) {

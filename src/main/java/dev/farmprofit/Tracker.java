@@ -157,6 +157,8 @@ public final class Tracker {
 
     public static Session farmingSession() { return activity(FARMING); }
 
+    public static Session miningSession() { return activity(MINING); }
+
     /** Things you can hit that aren't fights: NPCs, players, decorations. */
     private static final Set<String> NOT_MOBS = Set.of("player", "armor_stand", "villager", "wandering_trader",
             "item_frame", "glow_item_frame", "painting", "interaction", "text_display", "item_display", "block_display",
@@ -316,18 +318,24 @@ public final class Tracker {
             readTab(mc);
         }
 
-        trackBlocks(mc);
+        Perf.run("Mining/foraging blocks", () -> trackBlocks(mc));
         Combat.tick(mc);
-        Secrets.tick(mc);
-        Contests.tick();
-        Election.tick();
-        Enchants.tick();
-        CraftCost.tick();
-        WorldPuzzles.tick(mc);
-        Pests.tick(mc);
-        Greenhouse.tick(mc);
-        Greenhouse.noticeInventory(mc);
-        WorldPuzzles.quizTick();
+        Perf.run("Dungeon secret finder", () -> Secrets.tick(mc));
+        Perf.run("Jacob's contests", () -> Contests.tick());
+        Perf.run("Mayor", () -> Election.tick());
+        Perf.run("Enchant data", () -> Enchants.tick());
+        Perf.run("Recipe data", () -> CraftCost.tick());
+        Perf.run("Dungeon puzzles", () -> WorldPuzzles.tick(mc));
+        Perf.run("Pests", () -> Pests.tick(mc));
+        Perf.run("Glow outlines", () -> Glow.tick(mc));
+        Perf.run("Greenhouse guide", () -> Greenhouse.tick(mc));
+        Perf.run("Treasure chests", () -> PowderChests.tick(mc));
+        Perf.run("Lockpick helper", () -> Lockpick.tick(mc));
+        Perf.run("Diana burrows", () -> DianaBurrows.tick(mc));
+        Perf.run("Fishing bite alert", () -> FishingAlert.tick(mc));
+        Perf.run("Waypoints", () -> Waypoints.tick(mc));
+        Perf.run("Greenhouse unlocks", () -> Greenhouse.noticeInventory(mc));
+        Perf.run("Quiz data", () -> WorldPuzzles.quizTick());
         Calc.tick(mc);
 
         if (now - lastScoreboardCheck > 500) {
@@ -337,7 +345,7 @@ public final class Tracker {
         }
 
         if (Compat.screen(mc) != null && !(Compat.screen(mc) instanceof net.minecraft.client.gui.screens.ChatScreen)) lastMenuTime = System.currentTimeMillis();
-        Map<String, Integer> inv = scanInventory(mc);
+        Map<String, Integer> inv = scanInventory(mc);   // (measured as part of "Inventory tracking")
         Session target = mostRecent();
         boolean inMenu = Compat.screen(mc) != null;
         boolean menuOk = Menus.countsIn(mc);
@@ -626,9 +634,14 @@ public final class Tracker {
 
     public static void onChat(Component message) {
         String plain = strip(message.getString()).trim();
-        if (PLAYER_CHAT.matcher(plain).matches()) return;
+        if (PLAYER_CHAT.matcher(plain).matches() || plain.startsWith("Party >") || plain.startsWith("Guild >") || plain.startsWith("Co-op >")) {
+            Waypoints.onPlayerChat(plain);
+            return;
+        }
+        Mineshafts.onChat(plain);
         if (Bazaar.handle(plain)) return;
         if (Puzzles.onChat(plain)) return;
+        if (PowderChests.onChat(plain)) return;
         if (WorldPuzzles.onChat(plain)) return;
 
         scanShards(plain);
@@ -724,6 +737,8 @@ public final class Tracker {
         if (dug.find()) {
             Session s = activity(DIANA);
             s.burrows++;
+            DianaBurrows.onDug();
+            if (dug.group(1).contains("Minos Inquisitor")) Waypoints.offerShare("Minos Inquisitor");
             Matcher dc = DUG_COINS.matcher(plain);
             if (dc.find() && !purseTracked()) s.coins += Long.parseLong(dc.group(1).replace(",", ""));
             Debug.saw("burrow");

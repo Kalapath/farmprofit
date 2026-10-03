@@ -43,7 +43,7 @@ public final class WorldPuzzles {
             return;
         }
         trackTeleports(mc);
-        if (++tick % 5 != 0) return;               // 4x a second
+        if (++tick % (5 * Perf.slow()) != 0) return;   // 4x a second
         hud.clear();
         Config c = Config.get();
         try { if (c.solveIceFill) iceFill(mc); } catch (Throwable ignored) {}

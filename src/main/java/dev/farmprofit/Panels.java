@@ -13,7 +13,7 @@ import java.util.Map;
  * Panels: main, bazaar, secrets, contest, suggest. The main panel can have its own spot per activity.
  */
 public final class Panels {
-    public static final List<String> ALL = List.of("main", "bazaar", "greenhouse", "secrets", "contest", "suggest");
+    public static final List<String> ALL = List.of("main", "bazaar", "greenhouse", "waypoints", "secrets", "contest", "suggest");
 
     public static final class Pos {
         public int x = -1, y = -1;        // -1 = stack under the previous panel
@@ -28,6 +28,7 @@ public final class Panels {
         return switch (id) {
             case "bazaar" -> "Bazaar orders";
             case "greenhouse" -> "Greenhouse planter";
+            case "waypoints" -> "Waypoints";
             case "secrets" -> "Dungeon secrets";
             case "contest" -> "Jacob's contest";
             case "suggest" -> "Best now";
@@ -58,6 +59,9 @@ public final class Panels {
         }
         return p;
     }
+
+    /** True if the HUD layout was never saved (first launch). */
+    public static boolean isFresh() { return !Files.exists(FILE); }
 
     public static void save() {
         try {

@@ -87,6 +87,26 @@ public final class Contests {
         Tracker.say("§6[Farming] §eJacob's contest in " + Fmt.clock(next - now) + ": §f" + String.join(", ", CONTESTS.get(next)));
     }
 
+    /** While you're in a contest: the sidebar's contest lines (crop, time left, collected, medal / bracket). */
+    public static java.util.List<String> liveLines() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (!Config.get().showContestStanding) return out;
+        java.util.List<String> side = Tracker.sidebarLines;
+        for (int i = 0; i < side.size(); i++) {
+            if (!side.get(i).contains("Jacob's Contest")) continue;
+            for (int k = i + 1; k < Math.min(side.size(), i + 5); k++) {
+                String l = side.get(k).trim();
+                if (l.isEmpty() || l.startsWith("www.") || l.contains("hypixel.net")) break;
+                String col = l.matches("(?i).*(DIAMOND|PLATINUM).*") ? "§b" : l.matches("(?i).*GOLD.*") ? "§6" : l.matches("(?i).*SILVER.*") ? "§f"
+                        : l.matches("(?i).*BRONZE.*") ? "§c" : "§7";
+                out.add(" " + col + l);
+            }
+            if (!out.isEmpty()) out.add(0, "§e§lJacob's Contest");
+            break;
+        }
+        return out;
+    }
+
     /** Is this crop in a contest that's running now? */
     public static boolean running(String crop) {
         long now = System.currentTimeMillis();

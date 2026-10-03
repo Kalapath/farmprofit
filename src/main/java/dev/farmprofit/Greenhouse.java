@@ -262,7 +262,7 @@ public final class Greenhouse {
     /** While a target is set and you're in the Garden: the block you look at is the empty plot; marks what goes where. */
     public static void tick(Minecraft mc) {
         if (target == null || !Config.get().greenhouseGuide || mc.player == null || mc.level == null || !Tracker.FARMING.equals(Tracker.area)) return;
-        if (++tick % 8 != 0) return;
+        if (++tick % (8 * Perf.slow()) != 0) return;
         Mutation m = ALL.get(target);
         if (m == null) return;
         if (!(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;

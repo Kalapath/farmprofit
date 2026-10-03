@@ -41,6 +41,7 @@ public final class FarmProfitClient implements ClientModInitializer {
     public static final Logger LOG = LoggerFactory.getLogger("skyassist");
 
     private static KeyMapping settingsKey, menuKey;
+    private static final KeyMapping[] macroKeys = new KeyMapping[6];
 
     @Override
     public void onInitializeClient() {
@@ -49,7 +50,14 @@ public final class FarmProfitClient implements ClientModInitializer {
                 "key.skyassist.settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, category));
         menuKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.skyassist.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, category));
+        for (int i = 0; i < macroKeys.length; i++) {                         // unbound until you pick keys in Controls
+            macroKeys[i] = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                    "key.skyassist.macro" + (i + 1), InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, category));
+        }
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            for (int i = 0; i < macroKeys.length; i++) {
+                while (macroKeys[i].consumeClick()) if (Compat.noScreen(client)) Macros.run(i + 1);
+            }
             while (menuKey.consumeClick()) {
                 if (Compat.noScreen(client)) Compat.setScreen(client, ProfitMenus.hub());
             }
@@ -94,7 +102,9 @@ public final class FarmProfitClient implements ClientModInitializer {
         UseItemCallback.EVENT.register((player, level, hand) -> {
             if (player == Minecraft.getInstance().player) {
                 var stack = player.getItemInHand(hand);
-                if (stack.getItem() instanceof FishingRodItem) {
+                if (Tracker.strip(stack.getHoverName().getString()).contains("Ancestral Spade")) {
+                    DianaBurrows.onSpade(player.getX(), player.getY(), player.getZ());
+                } else if (stack.getItem() instanceof FishingRodItem) {
                     Tracker.onRodUse();
                 } else if (!Tracker.MINING.equals(Tracker.area) && !Tracker.FORAGING.equals(Tracker.area)) {
                     String name = Tracker.strip(stack.getHoverName().getString());
@@ -104,9 +114,10 @@ public final class FarmProfitClient implements ClientModInitializer {
             return InteractionResult.PASS;
         });
 
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (overlay) Secrets.onActionBar(Tracker.strip(message.getString()));
-            else Tracker.onChat(message);
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
+            if (overlay) { Secrets.onActionBar(Tracker.strip(message.getString())); return true; }
+            try { Tracker.onChat(message); } catch (Throwable t) { LOG.warn("chat handling failed", t); }   // tracking first
+            return ChatFilter.allow(Tracker.strip(message.getString()).trim());                            // then the spam filter
         });
 
         // Right-clicking blocks: marks dungeon secrets as done, keeps the dungeon session alive
@@ -135,6 +146,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                     if (!chat) HudEditor.reset();
                     if (!cfg.hudEnabled || Compat.hudHidden(mc) || mc.player == null) return;
 
+                    long perfStart = System.nanoTime();
                     List<HudEditor.Box> boxes = HudRenderer.layout(mc);
                     if (boxes.isEmpty()) return;
                     int[] hovered = chat ? HudEditor.update(mc, boxes) : null;
@@ -196,6 +208,7 @@ public final class FarmProfitClient implements ClientModInitializer {
                         }
                         if (scaled) Reflect.call(pose, "popMatrix");
                     }
+                    Perf.add("HUD drawing", System.nanoTime() - perfStart);
                     if (chat) {
                         HudEditor.Box last = boxes.get(boxes.size() - 1);
                         graphics.text(mc.font, "§7Drag: move §8| §7Middle-click: size §8| §7Right-click title: hide §8| §7Right-click item: don't count",
@@ -219,6 +232,10 @@ public final class FarmProfitClient implements ClientModInitializer {
                     .then(ClientCommands.literal("chat").executes(ctx -> { Accessories.show(Config.get().talismanCount); return 1; }))
                     .then(ClientCommands.argument("count", IntegerArgumentType.integer(1, 50))
                             .executes(ctx -> { TalismansScreen.requestOpen(IntegerArgumentType.getInteger(ctx, "count")); return 1; })));
+            dispatcher.register(ClientCommands.literal("itemsearch").executes(ctx -> { MenuScreen.open(() -> Storage.screen(null)); return 1; }));
+            dispatcher.register(ClientCommands.literal("waypoints").executes(ctx -> { MenuScreen.open(() -> Waypoints.screen(null)); return 1; }));
+            dispatcher.register(ClientCommands.literal("hotm").executes(ctx -> { MenuScreen.open(() -> Guides.hotm(null)); return 1; }));
+            dispatcher.register(ClientCommands.literal("hotf").executes(ctx -> { MenuScreen.open(() -> Guides.hotf(null)); return 1; }));
             dispatcher.register(ClientCommands.literal("greenhouse").executes(ctx -> { MenuScreen.open(() -> Greenhouse.screen(null)); return 1; }));
             dispatcher.register(ClientCommands.literal("shards").executes(ctx -> { MenuScreen.open(() -> Shards.screen(null)); return 1; }));
             dispatcher.register(ClientCommands.literal("dungeon")
@@ -326,6 +343,8 @@ public final class FarmProfitClient implements ClientModInitializer {
                 .then(ClientCommands.literal("settings").executes(ctx -> { SettingsScreen.requestOpen(); return 1; }))
                 .then(ClientCommands.literal("debug").executes(ctx -> { Debug.show(); return 1; }))
                 .then(ClientCommands.literal("report").executes(ctx -> { report(); return 1; }))
+                .then(ClientCommands.literal("perf").executes(ctx -> { Perf.show(); return 1; })
+                        .then(ClientCommands.literal("reset").executes(ctx -> { Perf.reset(); Tracker.say("§6[SkyAssist] §7Performance numbers reset."); return 1; })))
                 .then(ClientCommands.literal("setup").executes(ctx -> { SetupScreen.requestOpen(); return 1; }))
                 .then(ClientCommands.literal("dedupe").executes(ctx -> {
                     Dedupe.turnOff();

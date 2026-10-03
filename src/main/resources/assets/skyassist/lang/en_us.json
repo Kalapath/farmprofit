@@ -1,5 +1,11 @@
 {
   "key.category.skyassist.main": "SkyAssist",
   "key.skyassist.settings": "Open settings",
-  "key.skyassist.menu": "Open profit menu"
+  "key.skyassist.menu": "Open profit menu",
+  "key.skyassist.macro1": "Macro 1",
+  "key.skyassist.macro2": "Macro 2",
+  "key.skyassist.macro3": "Macro 3",
+  "key.skyassist.macro4": "Macro 4",
+  "key.skyassist.macro5": "Macro 5",
+  "key.skyassist.macro6": "Macro 6"
 }

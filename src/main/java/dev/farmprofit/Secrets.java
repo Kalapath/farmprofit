@@ -55,7 +55,7 @@ public final class Secrets {
             if (!spots.isEmpty() || !used.isEmpty()) { spots.clear(); used.clear(); roomTotal = -1; }
             return;
         }
-        if (!Config.get().secretFinder || ++tick % 10 != 0) return;   // twice a second
+        if (!Config.get().secretFinder || ++tick % (10 * Perf.slow()) != 0) return;   // twice a second
 
         Config c = Config.get();
         int radius = Math.max(4, Math.min(32, c.secretRadius));

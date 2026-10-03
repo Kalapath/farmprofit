@@ -33,12 +33,13 @@ final class ScreenOverlay {
                         };
                     }
                     if (args != null && args.length >= 2) {
-                        int mx = args.length > 2 && args[2] instanceof Integer i ? i : -999, my = args.length > 3 && args[3] instanceof Integer i ? i : -999;
+                        final int mx = args.length > 2 && args[2] instanceof Integer i ? i : -999, my = args.length > 3 && args[3] instanceof Integer j ? j : -999;
                         // new drawing layer, so everything below lands on top of the menu's own items
                         Reflect.call(args[1], new String[]{"nextStratum", "createNewRootLayer"});
-                        try { RarityBg.drawMenu(args[0], args[1], mx, my); } catch (Throwable ignored) {}
-                        try { Terminals.draw(args[0], args[1]); } catch (Throwable ignored) {}
-                        try { InvSearch.draw(args[0], args[1]); } catch (Throwable ignored) {}
+                        Perf.run("Rarity colors", () -> RarityBg.drawMenu(args[0], args[1], mx, my));
+                        Perf.run("Item labels", () -> ItemLabels.draw(args[0], args[1]));
+                        Perf.run("Terminal solvers", () -> Terminals.draw(args[0], args[1]));
+                        Perf.run("Inventory search", () -> InvSearch.draw(args[0], args[1]));
                     }
                     return null;
                 });

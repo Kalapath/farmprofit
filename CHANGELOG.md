@@ -1,5 +1,20 @@
 # Changelog
 
+## 8.0.0
+- Performance monitor + mode, shader fallback, clash-free first layout, playstyle setup, macro keys, Inquisitor sharing + party waypoints, mineshaft alert, CH waypoints, boss health, contest standing, storage overview, swim/swing/rainbow extras.
+
+## 7.0.0
+- Glow outlines for many targets, Diana burrow finder, fishing bite alert, chat filter + sound muting, item labels, /hotm and /hotf guides, crop fortune fix.
+
+## 6.8.0
+- Pests: bright green glowing outline (mixins, skipped safely if they can't attach) + green particle box; fire markers removed.
+
+## 6.7.0
+- Treasure chest lockpick helper (particle hook via a mixin that's skipped safely if it can't attach).
+
+## 6.6.0
+- Crystal Hollows treasure chest helper: highlight + despawn timer, chests/min, Double Powder, chest loot.
+
 ## 6.5.0
 - Layered menu drawing (rarity under items everywhere, visible search highlights), search box key handling, wrapped footers, pest dust box, shards from Hypixel item list, greenhouse unlock detection + planting surfaces + clearer visuals.
 

@@ -38,6 +38,10 @@ public final class ProfitMenus {
         rows.add(entry("§fBazaar flips", "Flip finder, plan, your orders and flip profit.", () -> Compat.setScreen(mc(), flips(0, ref.screen))));
         rows.add(entry("§fDungeon", "This run's secrets, crypts, deaths, puzzles, team; past runs.", () -> Compat.setScreen(mc(), Dungeon.screen(Dungeon.inDungeon() ? 0 : 3, ref.screen))));
         rows.add(entry("§fGreenhouse", "Plan a mutation: what to unlock first and what to plant where.", () -> Compat.setScreen(mc(), Greenhouse.screen(ref.screen))));
+        rows.add(entry("§fStorage overview", "Everything in your Ender Chest and backpacks, searchable.", () -> Compat.setScreen(mc(), Storage.screen(ref.screen))));
+        rows.add(entry("§fWaypoints", "Party coordinates and Crystal Hollows places.", () -> Compat.setScreen(mc(), Waypoints.screen(ref.screen))));
+        rows.add(entry("§fHOTM guide", "Best Heart of the Mountain trees for powder, gemstones, mithril, glacite.", () -> Compat.setScreen(mc(), Guides.hotm(ref.screen))));
+        rows.add(entry("§fHOTF guide", "Best Heart of the Forest trees for Fig / Helix whispers.", () -> Compat.setScreen(mc(), Guides.hotf(ref.screen))));
         rows.add(entry("§fAttribute shards", "Cheapest attribute levels to buy next.", () -> Compat.setScreen(mc(), Shards.screen(ref.screen))));
         rows.add(entry("§fNext talismans", "Cheapest Magical Power you don't have yet.", () -> Compat.setScreen(mc(), TalismansScreen.screen(ref.screen))));
         rows.add(entry("§fSettings", "Every setting, with search.", () -> Compat.setScreen(mc(), new SettingsScreen(ref.screen))));
